@@ -79,7 +79,10 @@ export default class AbbrLinkPlugin extends Plugin {
 	private async generateUniqueHash(file: TFile): Promise<string> {
 		let hash = this.generateSha256(file.basename);
 
-		if (this.settings.checkCollision && await this.isHashExisting(hash, file)) {
+		if (
+			this.settings.checkCollision &&
+			(await this.isHashExisting(hash, file))
+		) {
 			console.log(
 				`Hash collision detected for ${file.path}, using random mode`
 			);
@@ -196,7 +199,14 @@ export default class AbbrLinkPlugin extends Plugin {
 					file instanceof TFile &&
 					file.extension === "md"
 				) {
+					// 临时启用随机模式
+					const originalRandomMode = this.settings.useRandomMode;
+					this.settings.useRandomMode = true;
+
 					await this.processFile(file);
+
+					// 恢复原始随机模式设置
+					this.settings.useRandomMode = originalRandomMode;
 				}
 			})
 		);
@@ -245,9 +255,9 @@ class SampleSettingTab extends PluginSettingTab {
 		const { containerEl } = this;
 		containerEl.empty();
 
-		containerEl.createEl('h2', { text: 'Abbrlink' });
+		containerEl.createEl("h2", { text: "Abbrlink" });
 
-		containerEl.createEl('h3', { text: '基本设置' });
+		containerEl.createEl("h3", { text: "基本设置" });
 		new Setting(containerEl)
 			.setName("Abbrlink 长度")
 			.setDesc("Abbrlink 长度 (4-32)")
@@ -262,7 +272,7 @@ class SampleSettingTab extends PluginSettingTab {
 					})
 			);
 
-		containerEl.createEl('h3', { text: '自动化选项' });
+		containerEl.createEl("h3", { text: "自动化选项" });
 
 		new Setting(containerEl)
 			.setName("跳过已有链接")
@@ -288,11 +298,13 @@ class SampleSettingTab extends PluginSettingTab {
 					})
 			);
 
-		containerEl.createEl('h3', { text: '高级选项' });
+		containerEl.createEl("h3", { text: "高级选项" });
 
 		new Setting(containerEl)
 			.setName("随机模式")
-			.setDesc("使用随机生成的 SHA256 哈希值作为缩略链接，而不是基于文件名生成")
+			.setDesc(
+				"使用随机生成的 SHA256 哈希值作为缩略链接，而不是基于文件名生成"
+			)
 			.addToggle((toggle) =>
 				toggle
 					.setValue(this.plugin.settings.useRandomMode)
