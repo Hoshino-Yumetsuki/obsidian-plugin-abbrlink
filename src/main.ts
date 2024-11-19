@@ -29,11 +29,15 @@ export default class AbbrLinkPlugin extends Plugin {
 	settings: AbbrLinkSettings;
 
 	private generateRandomHash(): string {
-		const keyPair = crypto.generateKeyPairSync('ed25519');
-		const publicKey = keyPair.publicKey.export({ type: 'spki', format: 'der' });
-		return crypto.createHash('sha256')
+		const keyPair = crypto.generateKeyPairSync("ed25519");
+		const publicKey = keyPair.publicKey.export({
+			type: "spki",
+			format: "der",
+		});
+		return crypto
+			.createHash("sha256")
 			.update(publicKey)
-			.digest('hex')
+			.digest("hex")
 			.substring(0, this.settings.hashLength);
 	}
 
@@ -48,6 +52,43 @@ export default class AbbrLinkPlugin extends Plugin {
 			.substring(0, this.settings.hashLength);
 	}
 
+	private async getExistingAbbrlink(content: string): Promise<string | null> {
+		const match = content.match(/abbrlink:\s*([a-fA-F0-9]+)/);
+		return match ? match[1] : null;
+	}
+
+	private async isHashExisting(
+		hash: string,
+		currentFile: TFile
+	): Promise<boolean> {
+		const files = this.app.vault.getMarkdownFiles();
+		for (const file of files) {
+			if (file.path === currentFile.path) continue;
+
+			const content = await this.app.vault.read(file);
+			const existingHash = await this.getExistingAbbrlink(content);
+			if (existingHash === hash) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private async generateUniqueHash(file: TFile): Promise<string> {
+		let hash = this.generateSha256(file.basename);
+
+		if (await this.isHashExisting(hash, file)) {
+			console.log(
+				`Hash collision detected for ${file.path}, using random mode`
+			);
+			do {
+				hash = this.generateRandomHash();
+			} while (await this.isHashExisting(hash, file));
+		}
+
+		return hash;
+	}
+
 	private async processFile(file: TFile): Promise<void> {
 		try {
 			const content = await this.app.vault.read(file);
@@ -56,7 +97,7 @@ export default class AbbrLinkPlugin extends Plugin {
 				return;
 			}
 
-			const abbrlink = this.generateSha256(file.basename);
+			const abbrlink = await this.generateUniqueHash(file);
 			let newContent: string;
 
 			if (content.startsWith("---")) {
