@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-abbrlink",
-	"version": "1.0.0",
+	"version": "1.0.0-beta.2",
 	"description": "An Obsidian plugin to generate permanent links for markdown files",
 	"main": "main.js",
 	"scripts": {
