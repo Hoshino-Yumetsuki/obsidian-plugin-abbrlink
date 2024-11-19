@@ -1,11 +1,12 @@
 {
-	"id": "sample-plugin",
-	"name": "Sample Plugin",
+	"id": "obsidian-abbrlink",
+	"name": "Abbrlink Generator",
 	"version": "1.0.0",
 	"minAppVersion": "0.15.0",
-	"description": "Demonstrates some of the capabilities of the Obsidian API.",
-	"author": "Obsidian",
-	"authorUrl": "https://obsidian.md",
-	"fundingUrl": "https://obsidian.md/pricing",
-	"isDesktopOnly": false
+	"description": "Automatically generate permanent short links for your markdown files using SHA-256 hash.",
+	"author": "Q78KG",
+	"authorUrl": "https://github.com/Hoshino-Yumetsuki",
+	"fundingUrl": "",
+	"isDesktopOnly": false,
+	"repo": "Hoshino-Yumetsuki/obsidian-abbrlink"
 }

@@ -20,3 +20,9 @@ data.json
 
 # Exclude macOS Finder (System Explorer) View States
 .DS_Store
+
+cache
+unplugged
+build-state.yml
+install-state.gz
+.pnp.*
