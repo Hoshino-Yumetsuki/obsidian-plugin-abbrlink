@@ -1,7 +1,7 @@
 {
 	"id": "abbrlink",
 	"name": "Abbrlink",
-	"version": "1.0.1",
+	"version": "1.0.4",
 	"minAppVersion": "0.15.0",
 	"description": "Automatically generate permanent short links for your markdown files.",
 	"author": "Q78KG",
