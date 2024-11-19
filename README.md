@@ -1,38 +1,40 @@
 # Obsidian Abbrlink
 
-为 Markdown 自动生成永久链接。
+English | [简体中文](README_zh.md)
 
-## 功能特点
+Generate permanent links for Markdown files.
 
-- 为 Markdown 文件生成唯一链接
-- 支持自动和手动两种生成模式
-- 可配置的哈希长度(4-32位)
-- 支持检测并避免哈希冲突
-- 可选的随机哈希生成模式
-- 支持跳过已有 abbrlink 的文件
+## Features
 
-## 使用方法
+- Generate unique links for Markdown files
+- Support both automatic and manual generation modes
+- Configurable hash length (4-32 digits)
+- Hash collision detection and prevention
+- Optional random hash generation mode
+- Skip files with existing abbrlinks
 
-1. 在 Obsidian 的设置中启用插件
-2. 点击左侧栏的链接图标可以为所有文件批量生成 abbrlink
-3. 新建文件时可以选择自动生成 abbrlink
+## Usage
 
-## 设置选项
+1. Enable the plugin in Obsidian settings
+2. Click the link icon in the sidebar to batch generate abbrlinks for all files
+3. Choose to automatically generate abbrlinks for new files
 
-### 基本设置
-- **Abbrlink 长度**: 设置生成的哈希值长度(4-32位)
+## Settings
 
-### 自动化选项
-- **跳过已有链接**: 如果文件已包含 abbrlink 则跳过处理
-- **自动生成**: 为新创建的 Markdown 文件自动生成 abbrlink
+### Basic Settings
+- **Abbrlink Length**: Set the length of generated hash (4-32 digits)
 
-### 高级选项
-- **随机模式**: 使用随机生成的 SHA256 哈希值,而不是基于文件名
-- **检查哈希冲突**: 自动检测并避免哈希值冲突
+### Automation Options
+- **Skip Existing**: Skip processing files that already contain abbrlinks
+- **Auto Generate**: Automatically generate abbrlinks for newly created Markdown files
 
-## 生成的格式
+### Advanced Options
+- **Random Mode**: Use randomly generated SHA256 hash instead of filename-based hash
+- **Check Hash Collision**: Automatically detect and avoid hash value conflicts
 
-插件会在文件的 frontmatter 中添加 abbrlink 字段:
+## Generated Format
+
+The plugin adds an abbrlink field in the file's frontmatter:
 
 ```yaml
 ---
