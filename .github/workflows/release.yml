@@ -5,6 +5,9 @@ on:
     tags:
       - "*"
 
+permissions:
+  contents: write
+
 env:
   PLUGIN_NAME: obsidian-abbrlink # Change this to match the id of your plugin.
 
@@ -51,4 +54,3 @@ jobs:
             ${{ env.PLUGIN_NAME }}.zip
             main.js
             manifest.json
-            styles.css
