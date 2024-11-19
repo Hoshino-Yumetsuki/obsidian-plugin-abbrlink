@@ -16,6 +16,7 @@ interface AbbrLinkSettings {
 	skipExisting: boolean;
 	autoGenerate: boolean;
 	useRandomMode: boolean;
+	checkCollision: boolean;
 }
 
 const DEFAULT_SETTINGS: AbbrLinkSettings = {
@@ -23,6 +24,7 @@ const DEFAULT_SETTINGS: AbbrLinkSettings = {
 	skipExisting: true,
 	autoGenerate: false,
 	useRandomMode: false,
+	checkCollision: true,
 };
 
 export default class AbbrLinkPlugin extends Plugin {
@@ -77,7 +79,7 @@ export default class AbbrLinkPlugin extends Plugin {
 	private async generateUniqueHash(file: TFile): Promise<string> {
 		let hash = this.generateSha256(file.basename);
 
-		if (await this.isHashExisting(hash, file)) {
+		if (this.settings.checkCollision && await this.isHashExisting(hash, file)) {
 			console.log(
 				`Hash collision detected for ${file.path}, using random mode`
 			);
@@ -243,9 +245,12 @@ class SampleSettingTab extends PluginSettingTab {
 		const { containerEl } = this;
 		containerEl.empty();
 
+		containerEl.createEl('h2', { text: 'Abbrlink' });
+
+		containerEl.createEl('h3', { text: '基本设置' });
 		new Setting(containerEl)
-			.setName("Hash Length")
-			.setDesc("Length of the generated abbrlink hash")
+			.setName("Abbrlink 长度")
+			.setDesc("Abbrlink 长度 (4-32)")
 			.addSlider((slider) =>
 				slider
 					.setLimits(4, 32, 4)
@@ -257,9 +262,11 @@ class SampleSettingTab extends PluginSettingTab {
 					})
 			);
 
+		containerEl.createEl('h3', { text: '自动化选项' });
+
 		new Setting(containerEl)
-			.setName("Skip Existing")
-			.setDesc("Skip files that already have an abbrlink")
+			.setName("跳过已有链接")
+			.setDesc("如果文件已经包含缩略链接，则跳过处理")
 			.addToggle((toggle) =>
 				toggle
 					.setValue(this.plugin.settings.skipExisting)
@@ -270,8 +277,8 @@ class SampleSettingTab extends PluginSettingTab {
 			);
 
 		new Setting(containerEl)
-			.setName("Auto Generate")
-			.setDesc("Automatically generate abbrlink for new files")
+			.setName("自动生成")
+			.setDesc("为新创建的 Markdown 文件自动生成缩略链接")
 			.addToggle((toggle) =>
 				toggle
 					.setValue(this.plugin.settings.autoGenerate)
@@ -281,14 +288,28 @@ class SampleSettingTab extends PluginSettingTab {
 					})
 			);
 
+		containerEl.createEl('h3', { text: '高级选项' });
+
 		new Setting(containerEl)
-			.setName("Use Random Mode")
-			.setDesc("Use random SHA256 hash as abbrlink")
+			.setName("随机模式")
+			.setDesc("使用随机生成的 SHA256 哈希值作为缩略链接，而不是基于文件名生成")
 			.addToggle((toggle) =>
 				toggle
 					.setValue(this.plugin.settings.useRandomMode)
 					.onChange(async (value) => {
 						this.plugin.settings.useRandomMode = value;
+						await this.plugin.saveSettings();
+					})
+			);
+
+		new Setting(containerEl)
+			.setName("检查哈希冲突")
+			.setDesc("当检测到哈希值冲突时，自动切换到随机模式重新生成")
+			.addToggle((toggle) =>
+				toggle
+					.setValue(this.plugin.settings.checkCollision)
+					.onChange(async (value) => {
+						this.plugin.settings.checkCollision = value;
 						await this.plugin.saveSettings();
 					})
 			);
