@@ -15,18 +15,32 @@ interface AbbrLinkSettings {
 	hashLength: number;
 	skipExisting: boolean;
 	autoGenerate: boolean;
+	useRandomMode: boolean;
 }
 
 const DEFAULT_SETTINGS: AbbrLinkSettings = {
 	hashLength: 8,
 	skipExisting: true,
-	autoGenerate: false
+	autoGenerate: false,
+	useRandomMode: false,
 };
 
 export default class AbbrLinkPlugin extends Plugin {
 	settings: AbbrLinkSettings;
 
+	private generateRandomHash(): string {
+		const keyPair = crypto.generateKeyPairSync('ed25519');
+		const publicKey = keyPair.publicKey.export({ type: 'spki', format: 'der' });
+		return crypto.createHash('sha256')
+			.update(publicKey)
+			.digest('hex')
+			.substring(0, this.settings.hashLength);
+	}
+
 	private generateSha256(str: string): string {
+		if (this.settings.useRandomMode) {
+			return this.generateRandomHash();
+		}
 		return crypto
 			.createHash("sha256")
 			.update(str)
@@ -47,8 +61,11 @@ export default class AbbrLinkPlugin extends Plugin {
 
 			if (content.startsWith("---")) {
 				const [frontMatter, ...rest] = content.split("---\n");
-				const updatedFrontMatter = frontMatter.includes("abbrlink:") 
-					? frontMatter.replace(/abbrlink:.*/, `abbrlink: ${abbrlink}`)
+				const updatedFrontMatter = frontMatter.includes("abbrlink:")
+					? frontMatter.replace(
+							/abbrlink:.*/,
+							`abbrlink: ${abbrlink}`
+					  )
 					: `${frontMatter}abbrlink: ${abbrlink}\n`;
 				newContent = `${updatedFrontMatter}---\n${rest.join("---\n")}`;
 			} else {
@@ -131,7 +148,11 @@ export default class AbbrLinkPlugin extends Plugin {
 
 		this.registerEvent(
 			this.app.vault.on("create", async (file: TFile) => {
-				if (this.settings.autoGenerate && file instanceof TFile && file.extension === "md") {
+				if (
+					this.settings.autoGenerate &&
+					file instanceof TFile &&
+					file.extension === "md"
+				) {
 					await this.processFile(file);
 				}
 			})
@@ -184,33 +205,51 @@ class SampleSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName("Hash Length")
 			.setDesc("Length of the generated abbrlink hash")
-			.addSlider(slider => slider
-				.setLimits(4, 32, 4)
-				.setValue(this.plugin.settings.hashLength)
-				.setDynamicTooltip()
-				.onChange(async (value) => {
-					this.plugin.settings.hashLength = value;
-					await this.plugin.saveSettings();
-				}));
+			.addSlider((slider) =>
+				slider
+					.setLimits(4, 32, 4)
+					.setValue(this.plugin.settings.hashLength)
+					.setDynamicTooltip()
+					.onChange(async (value) => {
+						this.plugin.settings.hashLength = value;
+						await this.plugin.saveSettings();
+					})
+			);
 
 		new Setting(containerEl)
 			.setName("Skip Existing")
 			.setDesc("Skip files that already have an abbrlink")
-			.addToggle(toggle => toggle
-				.setValue(this.plugin.settings.skipExisting)
-				.onChange(async (value) => {
-					this.plugin.settings.skipExisting = value;
-					await this.plugin.saveSettings();
-				}));
+			.addToggle((toggle) =>
+				toggle
+					.setValue(this.plugin.settings.skipExisting)
+					.onChange(async (value) => {
+						this.plugin.settings.skipExisting = value;
+						await this.plugin.saveSettings();
+					})
+			);
 
 		new Setting(containerEl)
 			.setName("Auto Generate")
 			.setDesc("Automatically generate abbrlink for new files")
-			.addToggle(toggle => toggle
-				.setValue(this.plugin.settings.autoGenerate)
-				.onChange(async (value) => {
-					this.plugin.settings.autoGenerate = value;
-					await this.plugin.saveSettings();
-				}));
+			.addToggle((toggle) =>
+				toggle
+					.setValue(this.plugin.settings.autoGenerate)
+					.onChange(async (value) => {
+						this.plugin.settings.autoGenerate = value;
+						await this.plugin.saveSettings();
+					})
+			);
+
+		new Setting(containerEl)
+			.setName("Use Random Mode")
+			.setDesc("Use random SHA256 hash as abbrlink")
+			.addToggle((toggle) =>
+				toggle
+					.setValue(this.plugin.settings.useRandomMode)
+					.onChange(async (value) => {
+						this.plugin.settings.useRandomMode = value;
+						await this.plugin.saveSettings();
+					})
+			);
 	}
 }
