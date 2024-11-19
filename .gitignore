@@ -1,5 +1,5 @@
 # vscode
-.vscode 
+.vscode
 
 # Intellij
 *.iml
@@ -26,3 +26,5 @@ unplugged
 build-state.yml
 install-state.gz
 .pnp.*
+
+dist
