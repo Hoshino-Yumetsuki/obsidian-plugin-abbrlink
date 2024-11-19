@@ -1,6 +1,6 @@
 # Obsidian Abbrlink
 
-English | [简体中文](README_zh.md)
+English | [简体中文](README.zh-CN.md)
 
 Generate permanent links for Markdown files.
 
