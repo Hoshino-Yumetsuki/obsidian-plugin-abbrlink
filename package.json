@@ -17,7 +17,6 @@
 		"permalink",
 		"abbrlink"
 	],
-	"author": "Your Name",
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/Hoshino-Yumetsuki/obsidian-abbrlink"
