@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 env:
-  PLUGIN_NAME: obsidian-abbrlink # Change this to match the id of your plugin.
+  PLUGIN_NAME: abbrlink # Change this to match the id of your plugin.
 
 jobs:
   build:
