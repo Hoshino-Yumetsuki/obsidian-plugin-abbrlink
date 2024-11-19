@@ -55,7 +55,7 @@ export default class AbbrLinkPlugin extends Plugin {
 	}
 
 	private async getExistingAbbrlink(content: string): Promise<string | null> {
-		const match = content.match(/abbrlink:\s*([a-fA-F0-9]+)/);
+		const match = content.match(new RegExp(`abbrlink:\\s*([a-fA-F0-9]{${this.settings.hashLength}})`));
 		return match ? match[1] : null;
 	}
 
