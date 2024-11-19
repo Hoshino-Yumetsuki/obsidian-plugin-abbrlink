@@ -1,9 +1,9 @@
 {
 	"id": "obsidian-abbrlink",
-	"name": "Abbrlink Generator",
-	"version": "1.0.0",
+	"name": "Abbrlink",
+	"version": "1.0.1",
 	"minAppVersion": "0.15.0",
-	"description": "Automatically generate permanent short links for your markdown files using SHA-256 hash.",
+	"description": "Automatically generate permanent short links for your markdown files.",
 	"author": "Q78KG",
 	"authorUrl": "https://github.com/Hoshino-Yumetsuki",
 	"fundingUrl": "",
