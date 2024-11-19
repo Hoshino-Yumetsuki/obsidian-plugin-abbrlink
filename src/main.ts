@@ -11,46 +11,55 @@ import {
 } from "obsidian";
 import * as crypto from "crypto";
 
-// Remember to rename these classes and interfaces!
-
-interface MyPluginSettings {
-	mySetting: string;
+interface AbbrLinkSettings {
+	hashLength: number;
+	skipExisting: boolean;
+	autoGenerate: boolean;
 }
 
-const DEFAULT_SETTINGS: MyPluginSettings = {
-	mySetting: "default",
+const DEFAULT_SETTINGS: AbbrLinkSettings = {
+	hashLength: 8,
+	skipExisting: true,
+	autoGenerate: false
 };
 
 export default class AbbrLinkPlugin extends Plugin {
-	settings: MyPluginSettings;
+	settings: AbbrLinkSettings;
 
 	private generateSha256(str: string): string {
 		return crypto
 			.createHash("sha256")
 			.update(str)
 			.digest("hex")
-			.substring(0, 8);
+			.substring(0, this.settings.hashLength);
 	}
 
 	private async processFile(file: TFile): Promise<void> {
-		const content = await this.app.vault.read(file);
+		try {
+			const content = await this.app.vault.read(file);
 
-		if (content.includes("abbrlink:")) {
-			return;
+			if (content.includes("abbrlink:") && this.settings.skipExisting) {
+				return;
+			}
+
+			const abbrlink = this.generateSha256(file.basename);
+			let newContent: string;
+
+			if (content.startsWith("---")) {
+				const [frontMatter, ...rest] = content.split("---\n");
+				const updatedFrontMatter = frontMatter.includes("abbrlink:") 
+					? frontMatter.replace(/abbrlink:.*/, `abbrlink: ${abbrlink}`)
+					: `${frontMatter}abbrlink: ${abbrlink}\n`;
+				newContent = `${updatedFrontMatter}---\n${rest.join("---\n")}`;
+			} else {
+				newContent = `---\nabbrlink: ${abbrlink}\n---\n${content}`;
+			}
+
+			await this.app.vault.modify(file, newContent);
+		} catch (error) {
+			console.error(`Error processing file ${file.path}:`, error);
+			throw error;
 		}
-
-		const abbrlink = this.generateSha256(file.basename);
-
-		let newContent = "";
-		if (content.startsWith("---")) {
-			// eslint-disable-next-line @typescript-eslint/no-unused-vars
-			const [_, ...rest] = content.split("---\n");
-			newContent = `---\nabbrlink: ${abbrlink}\n${rest.join("---\n")}`;
-		} else {
-			newContent = `---\nabbrlink: ${abbrlink}\n---\n${content}`;
-		}
-
-		await this.app.vault.modify(file, newContent);
 	}
 
 	async onload() {
@@ -119,6 +128,14 @@ export default class AbbrLinkPlugin extends Plugin {
 		this.registerInterval(
 			window.setInterval(() => console.log("setInterval"), 5 * 60 * 1000)
 		);
+
+		this.registerEvent(
+			this.app.vault.on("create", async (file: TFile) => {
+				if (this.settings.autoGenerate && file instanceof TFile && file.extension === "md") {
+					await this.processFile(file);
+				}
+			})
+		);
 	}
 
 	onunload() {}
@@ -162,20 +179,38 @@ class SampleSettingTab extends PluginSettingTab {
 
 	display(): void {
 		const { containerEl } = this;
-
 		containerEl.empty();
 
 		new Setting(containerEl)
-			.setName("Setting #1")
-			.setDesc("It's a secret")
-			.addText((text) =>
-				text
-					.setPlaceholder("Enter your secret")
-					.setValue(this.plugin.settings.mySetting)
-					.onChange(async (value) => {
-						this.plugin.settings.mySetting = value;
-						await this.plugin.saveSettings();
-					})
-			);
+			.setName("Hash Length")
+			.setDesc("Length of the generated abbrlink hash")
+			.addSlider(slider => slider
+				.setLimits(4, 32, 4)
+				.setValue(this.plugin.settings.hashLength)
+				.setDynamicTooltip()
+				.onChange(async (value) => {
+					this.plugin.settings.hashLength = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName("Skip Existing")
+			.setDesc("Skip files that already have an abbrlink")
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.skipExisting)
+				.onChange(async (value) => {
+					this.plugin.settings.skipExisting = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName("Auto Generate")
+			.setDesc("Automatically generate abbrlink for new files")
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.autoGenerate)
+				.onChange(async (value) => {
+					this.plugin.settings.autoGenerate = value;
+					await this.plugin.saveSettings();
+				}));
 	}
 }
