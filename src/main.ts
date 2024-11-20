@@ -104,14 +104,17 @@ export default class AbbrLinkPlugin extends Plugin {
 			let newContent: string
 
 			if (content.startsWith('---')) {
-				const [frontMatter, ...rest] = content.split('---\n')
+				const parts = content.split('---')
+				const frontMatter = parts[1].startsWith('\n')
+					? parts[1]
+					: '\n' + parts[1]
 				const updatedFrontMatter = frontMatter.includes('abbrlink:')
 					? frontMatter.replace(
 							/abbrlink:.*/,
 							`abbrlink: ${abbrlink}`
 						)
-					: `${frontMatter.trim()}\nabbrlink: ${abbrlink}\n`
-				newContent = `---\n${updatedFrontMatter}---\n${rest.join('---\n')}`
+					: `${frontMatter.trimEnd()}\nabbrlink: ${abbrlink}\n`
+				newContent = `---${updatedFrontMatter}---${parts.slice(2).join('---')}`
 			} else {
 				newContent = `---\nabbrlink: ${abbrlink}\n---\n${content}`
 			}
