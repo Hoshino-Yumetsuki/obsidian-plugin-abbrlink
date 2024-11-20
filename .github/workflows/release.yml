@@ -4,16 +4,50 @@ on:
   push:
     tags:
       - "*"
+    branches:
+      - "**"
 
 permissions:
   contents: write
 
 env:
-  PLUGIN_NAME: abbrlink # Change this to match the id of your plugin.
+  PLUGIN_NAME: abbrlink
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    if: "!contains(github.ref, 'refs/tags/')"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "lts/*"
+
+      - name: Setup Environment
+        run: |
+          corepack enable
+          yarn set version stable
+
+      - name: Build
+        run: |
+          yarn
+          yarn lint
+          yarn build
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-files
+          path: |
+            dist/main.js
+            manifest.json
+
+  release:
+    runs-on: ubuntu-latest
+    if: "contains(github.ref, 'refs/tags/')"
 
     steps:
       - name: Checkout Repository
@@ -33,9 +67,10 @@ jobs:
         id: build
         run: |
           yarn
+          yarn lint
           yarn build
           mkdir ${{ env.PLUGIN_NAME }}
-          cp main.js manifest.json ${{ env.PLUGIN_NAME }}
+          cp dist/main.js manifest.json ${{ env.PLUGIN_NAME }}
           zip -r ${{ env.PLUGIN_NAME }}.zip ${{ env.PLUGIN_NAME }}
           ls
           echo "::set-output name=tag_name::$(git tag --sort version:refname | tail -n 1)"
@@ -52,5 +87,5 @@ jobs:
           prerelease: false
           files: |
             ${{ env.PLUGIN_NAME }}.zip
-            main.js
+            dist/main.js
             manifest.json

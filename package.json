@@ -2,10 +2,10 @@
 	"name": "obsidian-plugin-abbrlink",
 	"version": "1.0.4",
 	"description": "An Obsidian plugin to generate permanent links for markdown files",
-	"main": "main.js",
+	"main": "dist/main.js",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",
-		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+		"build": "node esbuild.config.mjs production",
 		"version": "node version-bump.mjs && git add manifest.json versions.json",
 		"lint": "eslint src",
 		"lint-fix": "eslint src --fix"
