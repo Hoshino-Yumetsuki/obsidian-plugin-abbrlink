@@ -110,8 +110,8 @@ export default class AbbrLinkPlugin extends Plugin {
 							/abbrlink:.*/,
 							`abbrlink: ${abbrlink}`
 						)
-					: `${frontMatter}abbrlink: ${abbrlink}\n`
-				newContent = `${updatedFrontMatter}---\n${rest.join('---\n')}`
+					: `${frontMatter.trim()}\nabbrlink: ${abbrlink}\n`
+				newContent = `---\n${updatedFrontMatter}---\n${rest.join('---\n')}`
 			} else {
 				newContent = `---\nabbrlink: ${abbrlink}\n---\n${content}`
 			}
