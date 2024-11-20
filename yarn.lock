@@ -212,7 +212,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@eslint/js@npm:9.15.0":
+"@eslint/js@npm:9.15.0, @eslint/js@npm:^9.15.0":
   version: 9.15.0
   resolution: "@eslint/js@npm:9.15.0"
   checksum: 10c0/56552966ab1aa95332f70d0e006db5746b511c5f8b5e0c6a9b2d6764ff6d964e0b2622731877cbc4e3f0e74c5b39191290d5f48147be19175292575130d499ab
@@ -1176,6 +1176,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "obsidian-plugin-abbrlink@workspace:."
   dependencies:
+    "@eslint/js": "npm:^9.15.0"
     "@types/node": "npm:^16.11.6"
     "@typescript-eslint/eslint-plugin": "npm:5.29.0"
     "@typescript-eslint/parser": "npm:5.29.0"
