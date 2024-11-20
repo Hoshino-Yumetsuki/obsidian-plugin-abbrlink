@@ -6,6 +6,9 @@ on:
       - "*"
     branches:
       - "**"
+    paths:
+      - '.github/workflows/**'
+      - 'src/**'
 
 permissions:
   contents: write
