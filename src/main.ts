@@ -1,14 +1,4 @@
-import {
-	App,
-	Editor,
-	MarkdownView,
-	Modal,
-	Notice,
-	Plugin,
-	PluginSettingTab,
-	Setting,
-	TFile
-} from 'obsidian'
+import { App, Notice, Plugin, PluginSettingTab, Setting, TFile } from 'obsidian'
 import * as crypto from 'crypto'
 
 interface AbbrLinkSettings {
@@ -150,51 +140,7 @@ export default class AbbrLinkPlugin extends Plugin {
 			}
 		)
 
-		const statusBarItemEl = this.addStatusBarItem()
-		statusBarItemEl.setText('Status Bar Text')
-
-		this.addCommand({
-			id: 'open-sample-modal-simple',
-			name: 'Open sample modal (simple)',
-			callback: () => {
-				new SampleModal(this.app).open()
-			}
-		})
-
-		this.addCommand({
-			id: 'sample-editor-command',
-			name: 'Sample editor command',
-			editorCallback: (editor: Editor, view: MarkdownView) => {
-				console.log(editor.getSelection())
-				editor.replaceSelection('Sample Editor Command')
-			}
-		})
-
-		this.addCommand({
-			id: 'open-sample-modal-complex',
-			name: 'Open sample modal (complex)',
-			checkCallback: (checking: boolean) => {
-				const markdownView =
-					this.app.workspace.getActiveViewOfType(MarkdownView)
-				if (markdownView) {
-					if (!checking) {
-						new SampleModal(this.app).open()
-					}
-
-					return true
-				}
-			}
-		})
-
 		this.addSettingTab(new SampleSettingTab(this.app, this))
-
-		this.registerDomEvent(document, 'click', (evt: MouseEvent) => {
-			console.log('click', evt)
-		})
-
-		this.registerInterval(
-			window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000)
-		)
 
 		this.registerEvent(
 			this.app.vault.on('create', async (file: TFile) => {
@@ -203,13 +149,9 @@ export default class AbbrLinkPlugin extends Plugin {
 					file instanceof TFile &&
 					file.extension === 'md'
 				) {
-					// 临时启用随机模式
 					const originalRandomMode = this.settings.useRandomMode
 					this.settings.useRandomMode = true
-
 					await this.processFile(file)
-
-					// 恢复原始随机模式设置
 					this.settings.useRandomMode = originalRandomMode
 				}
 			})
@@ -228,22 +170,6 @@ export default class AbbrLinkPlugin extends Plugin {
 
 	async saveSettings() {
 		await this.saveData(this.settings)
-	}
-}
-
-class SampleModal extends Modal {
-	constructor(app: App) {
-		super(app)
-	}
-
-	onOpen() {
-		const { contentEl } = this
-		contentEl.setText('Woah!')
-	}
-
-	onClose() {
-		const { contentEl } = this
-		contentEl.empty()
 	}
 }
 
