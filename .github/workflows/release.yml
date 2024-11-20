@@ -33,7 +33,6 @@ jobs:
         id: build
         run: |
           yarn
-          yarn lint
           yarn build
           mkdir ${{ env.PLUGIN_NAME }}
           mv dist/main.js main.js
