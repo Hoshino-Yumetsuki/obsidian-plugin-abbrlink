@@ -58,7 +58,9 @@ export default class AbbrLinkPlugin extends Plugin {
 		currentFile: TFile
 	): Promise<boolean> {
 		const files = this.app.vault.getMarkdownFiles()
-		const fileContents = await Promise.all(files.map(file => this.app.vault.read(file)))
+		const fileContents = await Promise.all(
+			files.map((file) => this.app.vault.read(file))
+		)
 
 		for (let i = 0; i < files.length; i++) {
 			const file = files[i]
@@ -131,7 +133,9 @@ export default class AbbrLinkPlugin extends Plugin {
 				try {
 					new Notice('Processing files...')
 					const files = this.app.vault.getMarkdownFiles()
-					await Promise.all(files.map(file => this.processFile(file)))
+					await Promise.all(
+						files.map((file) => this.processFile(file))
+					)
 					new Notice('Abbrlinks generated successfully!')
 				} catch (error) {
 					new Notice('Error generating abbrlinks!')
