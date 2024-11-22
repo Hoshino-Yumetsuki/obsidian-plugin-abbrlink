@@ -1,14 +1,7 @@
 import { App, Notice, Plugin, PluginSettingTab, Setting, TFile } from 'obsidian'
-
-interface AbbrLinkSettings {
-	hashLength: number
-	skipExisting: boolean
-	autoGenerate: boolean
-	useRandomMode: boolean
-	checkCollision: boolean
-	maxCollisionChecks: number
-	overrideDifferentLength: boolean
-}
+import { NoticeManager } from './NoticeManager'
+import { TaskManager, FileTask } from './TaskManager'
+import { AbbrLinkSettings } from './types'
 
 const DEFAULT_SETTINGS: AbbrLinkSettings = {
 	hashLength: 8,
@@ -20,20 +13,9 @@ const DEFAULT_SETTINGS: AbbrLinkSettings = {
 	overrideDifferentLength: false
 }
 
-interface FileTask {
-	file: TFile
-	hasAbbrlink: boolean
-	hash?: string
-	needsLengthUpdate: boolean
-}
-
-interface AbbrConflict {
-	hash: string
-	files: TFile[]
-}
-
 export default class AbbrLinkPlugin extends Plugin {
 	settings: AbbrLinkSettings
+	private taskManager: TaskManager
 
 	private async generateRandomHash(): Promise<string> {
 		const randomBytes = new Uint8Array(32)
@@ -81,7 +63,7 @@ export default class AbbrLinkPlugin extends Plugin {
 		hash: string,
 		currentFile: TFile
 	): Promise<boolean> {
-		const tasks = await this.buildTaskList()
+		const tasks = await this.taskManager.buildTaskList()
 		return tasks.some(
 			(task) => task.hash === hash && task.file.path !== currentFile.path
 		)
@@ -114,49 +96,75 @@ export default class AbbrLinkPlugin extends Plugin {
 		}
 	}
 
-	private async buildTaskList(): Promise<FileTask[]> {
-		const files = this.app.vault.getMarkdownFiles()
-		const tasks: FileTask[] = []
-
-		for (const file of files) {
-			const content = await this.app.vault.read(file)
-			const hash = await this.getExistingAbbrlink(content)
-			const hasAbbrlink = !!hash
-			const needsLengthUpdate = !!(
-				hash && hash.length !== this.settings.hashLength
-			)
-
-			tasks.push({
-				file,
-				hasAbbrlink,
-				hash: hash || undefined,
-				needsLengthUpdate
-			})
-		}
-
-		return tasks
-	}
-
-	private async findHashConflicts(
+	private async processFilesWithCollisionCheck(
 		tasks: FileTask[]
-	): Promise<AbbrConflict[]> {
-		const hashMap = new Map<string, TFile[]>()
+	): Promise<void> {
+		let checkCount = 0
+		let hasConflicts = true
 
-		for (const task of tasks) {
-			if (task.hash) {
-				const existingFiles = hashMap.get(task.hash) || []
-				existingFiles.push(task.file)
-				hashMap.set(task.hash, existingFiles)
+		while (hasConflicts && checkCount < this.settings.maxCollisionChecks) {
+			checkCount++
+
+			NoticeManager.showCollisionCheckStatus(
+				checkCount,
+				this.settings.maxCollisionChecks
+			)
+			const updatedTasks = await this.taskManager.buildTaskList()
+			const conflicts =
+				await this.taskManager.findHashConflicts(updatedTasks)
+
+			if (conflicts.length === 0) {
+				NoticeManager.showCollisionCheckStatus(
+					checkCount,
+					this.settings.maxCollisionChecks
+				)
+				NoticeManager.showCollisionResolutionStatus(checkCount, 0)
+				hasConflicts = false
+				return
+			}
+
+			NoticeManager.showCollisionResolutionStatus(
+				checkCount,
+				conflicts.length
+			)
+			await this.resolveConflicts(updatedTasks)
+			NoticeManager.showCollisionResolutionStatus(checkCount, 0)
+
+			if (
+				checkCount === this.settings.maxCollisionChecks &&
+				conflicts.length > 0
+			) {
+				const currentLength = this.settings.hashLength
+				const suggestedLength = Math.min(currentLength + 4, 32)
+
+				NoticeManager.showCollisionWarning(
+					checkCount,
+					conflicts.length,
+					currentLength,
+					suggestedLength
+				)
+
+				console.log('链接冲突详细信息：')
+				conflicts.forEach((conflict, index) => {
+					console.log(`冲突组 ${index + 1}：`)
+					console.log('哈希值：', conflict.hash)
+					console.log('冲突文件：')
+					conflict.files.forEach((file) => {
+						console.log(`- ${file.path}`)
+					})
+				})
 			}
 		}
+	}
 
-		return Array.from(hashMap.entries())
-			.filter(([_, files]) => files.length > 1)
-			.map(([hash, files]) => ({ hash, files }))
+	private async processFilesWithoutCollisionCheck(
+		tasks: FileTask[]
+	): Promise<void> {
+		await Promise.all(tasks.map((task) => this.processFile(task.file)))
 	}
 
 	private async resolveConflicts(tasks: FileTask[]): Promise<void> {
-		const conflicts = await this.findHashConflicts(tasks)
+		const conflicts = await this.taskManager.findHashConflicts(tasks)
 		if (conflicts.length === 0) return
 
 		new Notice(`发现 ${conflicts.length} 处哈希冲突，正在解决...`)
@@ -186,133 +194,39 @@ export default class AbbrLinkPlugin extends Plugin {
 	}
 
 	private async processFiles(): Promise<void> {
-		new Notice('正在构建任务列表...')
-		const allTasks = await this.buildTaskList()
+		new Notice('Step 1/3：正在构建任务列表...')
+		const allTasks = await this.taskManager.buildTaskList()
+		const tasksToProcess = this.taskManager.filterTasksToProcess(allTasks)
 
-		const tasksToProcess = this.settings.skipExisting
-			? allTasks.filter(
-					(task) =>
-						!task.hasAbbrlink ||
-						(this.settings.overrideDifferentLength &&
-							task.needsLengthUpdate)
-				)
-			: allTasks
+		const newLinksCount = tasksToProcess.filter(
+			(task) => !task.hasAbbrlink
+		).length
+		const updateLinksCount = tasksToProcess.filter(
+			(task) => task.needsLengthUpdate
+		).length
+
+		NoticeManager.showProcessingStatus(
+			newLinksCount,
+			updateLinksCount,
+			'Step 1/3'
+		)
 
 		if (this.settings.checkCollision) {
-			if (tasksToProcess.length === 0) {
-				new Notice('Step 1/3：无需生成新的链接')
-			} else {
-				const newLinksCount = tasksToProcess.filter(
-					(t) => !t.hasAbbrlink
-				).length
-				const updateLinksCount = tasksToProcess.filter(
-					(t) => t.needsLengthUpdate
-				).length
-
-				let message = 'Step 1/3：'
-				if (newLinksCount > 0) {
-					message += `正在为 ${newLinksCount} 个文件生成链接`
-				}
-				if (updateLinksCount > 0) {
-					message += `${newLinksCount > 0 ? '，' : ''}正在更新 ${updateLinksCount} 个不一致长度的链接`
-				}
-				new Notice(message + '...')
-
-				await Promise.all(
-					tasksToProcess.map((task) => this.processFile(task.file))
-				)
-				new Notice('Step 1/3：链接生成完成')
-			}
-
-			let checkCount = 0
-			let hasConflicts = true
-
-			while (
-				hasConflicts &&
-				checkCount < this.settings.maxCollisionChecks
-			) {
-				checkCount++
-
-				new Notice(
-					`Step 2/3：正在检查哈希冲突... (第 ${checkCount}/${this.settings.maxCollisionChecks} 轮)`
-				)
-				const updatedTasks = await this.buildTaskList()
-				const conflicts = await this.findHashConflicts(updatedTasks)
-
-				if (conflicts.length === 0) {
-					new Notice(`Step 2/3：第 ${checkCount} 轮检查未发现冲突`)
-					new Notice('Step 3/3：无需解决冲突')
-					hasConflicts = false
-					return
-				}
-
-				new Notice(
-					`Step 2/3：第 ${checkCount} 轮检查发现 ${conflicts.length} 处冲突`
-				)
-
-				new Notice(`Step 3/3：正在解决第 ${checkCount} 轮冲突...`)
-				await this.resolveConflicts(updatedTasks)
-				new Notice(`Step 3/3：第 ${checkCount} 轮冲突已解决`)
-
-				if (
-					checkCount === this.settings.maxCollisionChecks &&
-					conflicts.length > 0
-				) {
-					const currentLength = this.settings.hashLength
-					const suggestedLength = Math.min(currentLength + 4, 32)
-
-					new Notice(
-						`警告：经过 ${checkCount} 轮检查后仍存在 ${conflicts.length} 处冲突。\n\n` +
-							'建议采取以下措施：\n' +
-							`1. 增加链接长度（当前：${currentLength}，建议：${suggestedLength}）\n` +
-							'2. 减少文章数量\n' +
-							'3. 增加最大检查次数\n\n' +
-							'您可以在插件设置中调整这些选项。',
-						10000
-					)
-
-					console.log('链接冲突详细信息：')
-					conflicts.forEach((conflict, index) => {
-						console.log(`冲突组 ${index + 1}：`)
-						console.log('哈希值：', conflict.hash)
-						console.log('冲突文件：')
-						conflict.files.forEach((file) => {
-							console.log(`- ${file.path}`)
-						})
-					})
-				}
-			}
+			await this.processFilesWithCollisionCheck(tasksToProcess)
 		} else {
-			if (tasksToProcess.length === 0) {
-				new Notice('无需处理任何文件')
-				return
-			}
-
-			const newLinksCount = tasksToProcess.filter(
-				(t) => !t.hasAbbrlink
-			).length
-			const updateLinksCount = tasksToProcess.filter(
-				(t) => t.needsLengthUpdate
-			).length
-
-			let message = 'Step 1/1：'
-			if (newLinksCount > 0) {
-				message += `正在为 ${newLinksCount} 个文件生成链接`
-			}
-			if (updateLinksCount > 0) {
-				message += `${newLinksCount > 0 ? '，' : ''}正在更新 ${updateLinksCount} 个不一致长度的链接`
-			}
-			new Notice(message + '...')
-
-			await Promise.all(
-				tasksToProcess.map((task) => this.processFile(task.file))
-			)
-			new Notice('Step 1/1：链接生成完成')
+			await this.processFilesWithoutCollisionCheck(tasksToProcess)
 		}
+
+		new Notice('完成！')
 	}
 
 	async onload() {
 		await this.loadSettings()
+		this.taskManager = new TaskManager(
+			this.app.vault,
+			this.settings,
+			this.getExistingAbbrlink.bind(this)
+		)
 
 		this.addRibbonIcon('link', 'Generate Abbrlinks', async () => {
 			try {
@@ -372,7 +286,7 @@ class SampleSettingTab extends PluginSettingTab {
 			.setName('Abbrlink Length')
 			.setDesc(
 				'哈希值的长度 (1-32)。' +
-					'如果经常发生冲突，建议增加长度。' +
+					'如果经常发生冲突，建议增加��度。' +
 					'长度越长，发生冲突的概率越小。'
 			)
 			.addSlider((slider) =>
@@ -454,7 +368,7 @@ class SampleSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('覆盖不同长度的链接')
-			.setDesc('当文件的链接长度与当前设置不一致时，重新生成该链接')
+			.setDesc('当文件的链接长度与当前设置不一时，重新生成该链接')
 			.addToggle((toggle) =>
 				toggle
 					.setValue(this.plugin.settings.overrideDifferentLength)
