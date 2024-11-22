@@ -798,13 +798,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"crypto@npm:^1.0.1":
-  version: 1.0.1
-  resolution: "crypto@npm:1.0.1"
-  checksum: 10c0/fcf7dbd68ac5415b7fde7d7208fe203038e92e83e8a8fcf6e86ab4771ce3dd026d6967a990ba56b9d1c771378210814d5c90d907d3739fbd1723d552ad6c8ab8
-  languageName: node
-  linkType: hard
-
 "data-view-buffer@npm:^1.0.1":
   version: 1.0.1
   resolution: "data-view-buffer@npm:1.0.1"
@@ -2084,7 +2077,6 @@ __metadata:
     "@typescript-eslint/eslint-plugin": "npm:^8.15.0"
     "@typescript-eslint/parser": "npm:5.29.0"
     builtin-modules: "npm:3.3.0"
-    crypto: "npm:^1.0.1"
     esbuild: "npm:0.17.3"
     eslint: "npm:^9.15.0"
     eslint-config-prettier: "npm:^9.1.0"
