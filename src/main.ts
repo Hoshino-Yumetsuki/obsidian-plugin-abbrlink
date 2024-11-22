@@ -21,6 +21,11 @@ interface FileTask {
 	hasAbbrlink: boolean
 }
 
+interface AbbrConflict {
+	hash: string
+	files: TFile[]
+}
+
 export default class AbbrLinkPlugin extends Plugin {
 	settings: AbbrLinkSettings
 
@@ -143,6 +148,57 @@ export default class AbbrLinkPlugin extends Plugin {
 		return tasks
 	}
 
+	private async findHashConflicts(): Promise<AbbrConflict[]> {
+		const files = this.app.vault.getMarkdownFiles()
+		const hashMap = new Map<string, TFile[]>()
+
+		for (const file of files) {
+			const content = await this.app.vault.read(file)
+			const hash = await this.getExistingAbbrlink(content)
+			if (hash) {
+				const existingFiles = hashMap.get(hash) || []
+				existingFiles.push(file)
+				hashMap.set(hash, existingFiles)
+			}
+		}
+
+		return Array.from(hashMap.entries())
+			.filter(([_, files]) => files.length > 1)
+			.map(([hash, files]) => ({ hash, files }))
+	}
+
+	private async resolveConflicts(): Promise<void> {
+		const conflicts = await this.findHashConflicts()
+		if (conflicts.length === 0) return
+
+		new Notice(`Found ${conflicts.length} hash conflicts. Resolving...`)
+
+		for (const conflict of conflicts) {
+			// Sort files by creation time, newest first
+			const sortedFiles = conflict.files.sort(
+				(a, b) => b.stat.ctime - a.stat.ctime
+			)
+
+			// Keep the oldest file's hash, change others
+			for (let i = 0; i < sortedFiles.length - 1; i++) {
+				const file = sortedFiles[i]
+				let newHash: string
+				do {
+					newHash = await this.generateRandomHash()
+				} while (await this.isHashExisting(newHash, file))
+
+				await this.app.fileManager.processFrontMatter(
+					file,
+					(frontmatter) => {
+						frontmatter.abbrlink = newHash
+					}
+				)
+			}
+		}
+
+		new Notice('Hash conflicts resolved!')
+	}
+
 	private async processFiles(): Promise<void> {
 		new Notice('Building task list...')
 		const tasks = await this.buildTaskList()
@@ -155,23 +211,24 @@ export default class AbbrLinkPlugin extends Plugin {
 		new Notice(`Processing ${tasks.length} files...`)
 		await Promise.all(tasks.map((task) => this.processFile(task.file)))
 		new Notice('Abbrlinks generated successfully!')
+
+		// Add conflict check after processing
+		if (this.settings.checkCollision) {
+			await this.resolveConflicts()
+		}
 	}
 
 	async onload() {
 		await this.loadSettings()
 
-		this.addRibbonIcon(
-			'link',
-			'Generate Abbrlinks',
-			async () => {
-				try {
-					await this.processFiles()
-				} catch (error) {
-					new Notice('Error generating abbrlinks!')
-					console.error(error)
-				}
+		this.addRibbonIcon('link', 'Generate Abbrlinks', async () => {
+			try {
+				await this.processFiles()
+			} catch (error) {
+				new Notice('Error generating abbrlinks!')
+				console.error(error)
 			}
-		)
+		})
 
 		this.addSettingTab(new SampleSettingTab(this.app, this))
 
