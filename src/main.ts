@@ -7,6 +7,7 @@ interface AbbrLinkSettings {
 	useRandomMode: boolean
 	checkCollision: boolean
 	maxCollisionChecks: number
+	overrideDifferentLength: boolean
 }
 
 const DEFAULT_SETTINGS: AbbrLinkSettings = {
@@ -15,13 +16,15 @@ const DEFAULT_SETTINGS: AbbrLinkSettings = {
 	autoGenerate: false,
 	useRandomMode: false,
 	checkCollision: false,
-	maxCollisionChecks: 3
+	maxCollisionChecks: 3,
+	overrideDifferentLength: false
 }
 
 interface FileTask {
 	file: TFile
 	hasAbbrlink: boolean
 	hash?: string
+	needsLengthUpdate: boolean
 }
 
 interface AbbrConflict {
@@ -119,8 +122,16 @@ export default class AbbrLinkPlugin extends Plugin {
 			const content = await this.app.vault.read(file)
 			const hash = await this.getExistingAbbrlink(content)
 			const hasAbbrlink = !!hash
+			const needsLengthUpdate = !!(
+				hash && hash.length !== this.settings.hashLength
+			)
 
-			tasks.push({ file, hasAbbrlink, hash: hash || undefined })
+			tasks.push({
+				file,
+				hasAbbrlink,
+				hash: hash || undefined,
+				needsLengthUpdate
+			})
 		}
 
 		return tasks
@@ -179,16 +190,34 @@ export default class AbbrLinkPlugin extends Plugin {
 		const allTasks = await this.buildTaskList()
 
 		const tasksToProcess = this.settings.skipExisting
-			? allTasks.filter((task) => !task.hasAbbrlink)
+			? allTasks.filter(
+					(task) =>
+						!task.hasAbbrlink ||
+						(this.settings.overrideDifferentLength &&
+							task.needsLengthUpdate)
+				)
 			: allTasks
 
 		if (this.settings.checkCollision) {
 			if (tasksToProcess.length === 0) {
 				new Notice('Step 1/3：无需生成新的链接')
 			} else {
-				new Notice(
-					`Step 1/3：正在为 ${tasksToProcess.length} 个文件生成链接...`
-				)
+				const newLinksCount = tasksToProcess.filter(
+					(t) => !t.hasAbbrlink
+				).length
+				const updateLinksCount = tasksToProcess.filter(
+					(t) => t.needsLengthUpdate
+				).length
+
+				let message = 'Step 1/3：'
+				if (newLinksCount > 0) {
+					message += `正在为 ${newLinksCount} 个文件生成链接`
+				}
+				if (updateLinksCount > 0) {
+					message += `${newLinksCount > 0 ? '，' : ''}正在更新 ${updateLinksCount} 个不一致长度的链接`
+				}
+				new Notice(message + '...')
+
 				await Promise.all(
 					tasksToProcess.map((task) => this.processFile(task.file))
 				)
@@ -259,9 +288,22 @@ export default class AbbrLinkPlugin extends Plugin {
 				return
 			}
 
-			new Notice(
-				`Step 1/1：正在为 ${tasksToProcess.length} 个文件生成链接...`
-			)
+			const newLinksCount = tasksToProcess.filter(
+				(t) => !t.hasAbbrlink
+			).length
+			const updateLinksCount = tasksToProcess.filter(
+				(t) => t.needsLengthUpdate
+			).length
+
+			let message = 'Step 1/1：'
+			if (newLinksCount > 0) {
+				message += `正在为 ${newLinksCount} 个文件生成链接`
+			}
+			if (updateLinksCount > 0) {
+				message += `${newLinksCount > 0 ? '，' : ''}正在更新 ${updateLinksCount} 个不一致长度的链接`
+			}
+			new Notice(message + '...')
+
 			await Promise.all(
 				tasksToProcess.map((task) => this.processFile(task.file))
 			)
@@ -406,6 +448,18 @@ class SampleSettingTab extends PluginSettingTab {
 					.setDynamicTooltip()
 					.onChange(async (value) => {
 						this.plugin.settings.maxCollisionChecks = value
+						await this.plugin.saveSettings()
+					})
+			)
+
+		new Setting(containerEl)
+			.setName('覆盖不同长度的链接')
+			.setDesc('当文件的链接长度与当前设置不一致时，重新生成该链接')
+			.addToggle((toggle) =>
+				toggle
+					.setValue(this.plugin.settings.overrideDifferentLength)
+					.onChange(async (value) => {
+						this.plugin.settings.overrideDifferentLength = value
 						await this.plugin.saveSettings()
 					})
 			)
