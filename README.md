@@ -12,6 +12,7 @@ Generate permanent links for Markdown files.
 - Hash collision detection and prevention
 - Optional random hash generation mode
 - Skip files with existing abbrlinks
+- Step-by-step task building for efficient batch processing
 
 ## Usage
 
