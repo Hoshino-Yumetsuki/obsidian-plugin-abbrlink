@@ -200,6 +200,7 @@ export default class AbbrLinkPlugin extends Plugin {
 		)
 
 		if (this.settings.checkCollision) {
+			await this.processFilesWithoutCollisionCheck(tasksToProcess)
 			await this.processFilesWithCollisionCheck(tasksToProcess)
 		} else {
 			await this.processFilesWithoutCollisionCheck(tasksToProcess)
