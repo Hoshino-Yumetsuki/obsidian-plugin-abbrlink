@@ -1,4 +1,4 @@
-# Obsidian Abbrlink
+# Abbrlink for Obsidian
 
 [English](README.md) | 简体中文
 
