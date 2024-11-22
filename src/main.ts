@@ -101,25 +101,13 @@ export default class AbbrLinkPlugin extends Plugin {
 			}
 
 			const abbrlink = await this.generateUniqueHash(file)
-			let newContent: string
 
-			if (content.startsWith('---')) {
-				const parts = content.split('---')
-				const frontMatter = parts[1].startsWith('\n')
-					? parts[1]
-					: '\n' + parts[1]
-				const updatedFrontMatter = frontMatter.includes('abbrlink:')
-					? frontMatter.replace(
-							/abbrlink:.*/,
-							`abbrlink: ${abbrlink}`
-						)
-					: `${frontMatter.trimEnd()}\nabbrlink: ${abbrlink}\n`
-				newContent = `---${updatedFrontMatter}---${parts.slice(2).join('---')}`
-			} else {
-				newContent = `---\nabbrlink: ${abbrlink}\n---\n${content}`
-			}
-
-			await this.app.vault.modify(file, newContent)
+			await this.app.fileManager.processFrontMatter(
+				file,
+				(frontmatter) => {
+					frontmatter.abbrlink = abbrlink
+				}
+			)
 		} catch (error) {
 			console.error(`Error processing file ${file.path}:`, error)
 			throw error
@@ -192,9 +180,8 @@ class SampleSettingTab extends PluginSettingTab {
 		const { containerEl } = this
 		containerEl.empty()
 
-		containerEl.createEl('h2', { text: 'Abbrlink' })
+		new Setting(containerEl).setName('常规').setHeading()
 
-		containerEl.createEl('h3', { text: '基本设置' })
 		new Setting(containerEl)
 			.setName('Abbrlink 长度')
 			.setDesc('Abbrlink 长度 (4-32)')
@@ -209,7 +196,7 @@ class SampleSettingTab extends PluginSettingTab {
 					})
 			)
 
-		containerEl.createEl('h3', { text: '自动化选项' })
+		new Setting(containerEl).setName('自动化').setHeading()
 
 		new Setting(containerEl)
 			.setName('跳过已有链接')
@@ -235,7 +222,7 @@ class SampleSettingTab extends PluginSettingTab {
 					})
 			)
 
-		containerEl.createEl('h3', { text: '高级选项' })
+		new Setting(containerEl).setName('高级选项').setHeading()
 
 		new Setting(containerEl)
 			.setName('随机模式')
