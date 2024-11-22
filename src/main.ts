@@ -1,5 +1,4 @@
 import { App, Notice, Plugin, PluginSettingTab, Setting, TFile } from 'obsidian'
-import * as crypto from 'crypto'
 
 interface AbbrLinkSettings {
 	hashLength: number
@@ -20,28 +19,37 @@ const DEFAULT_SETTINGS: AbbrLinkSettings = {
 export default class AbbrLinkPlugin extends Plugin {
 	settings: AbbrLinkSettings
 
-	private generateRandomHash(): string {
-		const keyPair = crypto.generateKeyPairSync('ed25519')
-		const publicKey = keyPair.publicKey.export({
-			type: 'spki',
-			format: 'der'
-		})
-		return crypto
-			.createHash('sha256')
-			.update(publicKey)
-			.digest('hex')
-			.substring(0, this.settings.hashLength)
+	private async generateRandomHash(): Promise<string> {
+		const randomBytes = new Uint8Array(32)
+		window.crypto.getRandomValues(randomBytes)
+
+		const hashBuffer = await window.crypto.subtle.digest(
+			'SHA-256',
+			randomBytes
+		)
+		const hashArray = Array.from(new Uint8Array(hashBuffer))
+		const hashHex = hashArray
+			.map((b) => b.toString(16).padStart(2, '0'))
+			.join('')
+
+		return hashHex.substring(0, this.settings.hashLength)
 	}
 
-	private generateSha256(str: string): string {
+	private async generateSha256(str: string): Promise<string> {
 		if (this.settings.useRandomMode) {
-			return this.generateRandomHash()
+			return await this.generateRandomHash()
 		}
-		return crypto
-			.createHash('sha256')
-			.update(str)
-			.digest('hex')
-			.substring(0, this.settings.hashLength)
+
+		const encoder = new window.TextEncoder()
+		const data = encoder.encode(str)
+
+		const hashBuffer = await window.crypto.subtle.digest('SHA-256', data)
+		const hashArray = Array.from(new Uint8Array(hashBuffer))
+		const hashHex = hashArray
+			.map((b) => b.toString(16).padStart(2, '0'))
+			.join('')
+
+		return hashHex.substring(0, this.settings.hashLength)
 	}
 
 	private async getExistingAbbrlink(content: string): Promise<string | null> {
@@ -75,7 +83,7 @@ export default class AbbrLinkPlugin extends Plugin {
 	}
 
 	private async generateUniqueHash(file: TFile): Promise<string> {
-		let hash = this.generateSha256(file.basename)
+		let hash = await this.generateSha256(file.basename)
 
 		if (
 			this.settings.checkCollision &&
@@ -85,7 +93,7 @@ export default class AbbrLinkPlugin extends Plugin {
 				`Hash collision detected for ${file.path}, using random mode`
 			)
 			do {
-				hash = this.generateRandomHash()
+				hash = await this.generateRandomHash()
 			} while (await this.isHashExisting(hash, file))
 		}
 
