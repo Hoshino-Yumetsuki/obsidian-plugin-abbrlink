@@ -19,6 +19,7 @@ const DEFAULT_SETTINGS: AbbrLinkSettings = {
 interface FileTask {
 	file: TFile
 	hasAbbrlink: boolean
+	hash?: string
 }
 
 interface AbbrConflict {
@@ -75,21 +76,10 @@ export default class AbbrLinkPlugin extends Plugin {
 		hash: string,
 		currentFile: TFile
 	): Promise<boolean> {
-		const files = this.app.vault.getMarkdownFiles()
-		const fileContents = await Promise.all(
-			files.map((file) => this.app.vault.read(file))
+		const tasks = await this.buildTaskList()
+		return tasks.some(task => 
+			task.hash === hash && task.file.path !== currentFile.path
 		)
-
-		for (let i = 0; i < files.length; i++) {
-			const file = files[i]
-			if (file.path === currentFile.path) continue
-
-			const existingHash = await this.getExistingAbbrlink(fileContents[i])
-			if (existingHash === hash) {
-				return true
-			}
-		}
-		return false
 	}
 
 	private async generateUniqueHash(file: TFile): Promise<string> {
@@ -138,27 +128,23 @@ export default class AbbrLinkPlugin extends Plugin {
 
 		for (const file of files) {
 			const content = await this.app.vault.read(file)
-			const hasAbbrlink = content.includes('abbrlink:')
+			const hash = await this.getExistingAbbrlink(content)
+			const hasAbbrlink = !!hash
 
-			if (!hasAbbrlink || !this.settings.skipExisting) {
-				tasks.push({ file, hasAbbrlink })
-			}
+			tasks.push({ file, hasAbbrlink, hash: hash || undefined })
 		}
 
 		return tasks
 	}
 
-	private async findHashConflicts(): Promise<AbbrConflict[]> {
-		const files = this.app.vault.getMarkdownFiles()
+	private async findHashConflicts(tasks: FileTask[]): Promise<AbbrConflict[]> {
 		const hashMap = new Map<string, TFile[]>()
 
-		for (const file of files) {
-			const content = await this.app.vault.read(file)
-			const hash = await this.getExistingAbbrlink(content)
-			if (hash) {
-				const existingFiles = hashMap.get(hash) || []
-				existingFiles.push(file)
-				hashMap.set(hash, existingFiles)
+		for (const task of tasks) {
+			if (task.hash) {
+				const existingFiles = hashMap.get(task.hash) || []
+				existingFiles.push(task.file)
+				hashMap.set(task.hash, existingFiles)
 			}
 		}
 
@@ -167,25 +153,23 @@ export default class AbbrLinkPlugin extends Plugin {
 			.map(([hash, files]) => ({ hash, files }))
 	}
 
-	private async resolveConflicts(): Promise<void> {
-		const conflicts = await this.findHashConflicts()
+	private async resolveConflicts(tasks: FileTask[]): Promise<void> {
+		const conflicts = await this.findHashConflicts(tasks)
 		if (conflicts.length === 0) return
 
 		new Notice(`Found ${conflicts.length} hash conflicts. Resolving...`)
 
 		for (const conflict of conflicts) {
-			// Sort files by creation time, newest first
-			const sortedFiles = conflict.files.sort(
-				(a, b) => b.stat.ctime - a.stat.ctime
+			const sortedFiles = conflict.files.sort((a, b) => 
+				b.stat.ctime - a.stat.ctime
 			)
 
-			// Keep the oldest file's hash, change others
 			for (let i = 0; i < sortedFiles.length - 1; i++) {
 				const file = sortedFiles[i]
 				let newHash: string
 				do {
 					newHash = await this.generateRandomHash()
-				} while (await this.isHashExisting(newHash, file))
+				} while (tasks.some(task => task.hash === newHash))
 
 				await this.app.fileManager.processFrontMatter(
 					file,
@@ -201,20 +185,26 @@ export default class AbbrLinkPlugin extends Plugin {
 
 	private async processFiles(): Promise<void> {
 		new Notice('Building task list...')
-		const tasks = await this.buildTaskList()
+		const allTasks = await this.buildTaskList()
 
-		if (tasks.length === 0) {
+		const tasksToProcess = this.settings.skipExisting 
+			? allTasks.filter(task => !task.hasAbbrlink)
+			: allTasks
+
+		if (tasksToProcess.length === 0) {
 			new Notice('No files need to be processed!')
 			return
 		}
 
-		new Notice(`Processing ${tasks.length} files...`)
-		await Promise.all(tasks.map((task) => this.processFile(task.file)))
+		new Notice(`Processing ${tasksToProcess.length} files...`)
+		await Promise.all(
+			tasksToProcess.map(task => this.processFile(task.file))
+		)
 		new Notice('Abbrlinks generated successfully!')
 
-		// Add conflict check after processing
 		if (this.settings.checkCollision) {
-			await this.resolveConflicts()
+			const updatedTasks = await this.buildTaskList()
+			await this.resolveConflicts(updatedTasks)
 		}
 	}
 
