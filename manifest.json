@@ -7,6 +7,5 @@
 	"author": "Q78KG",
 	"authorUrl": "https://github.com/Hoshino-Yumetsuki",
 	"fundingUrl": "",
-	"isDesktopOnly": false,
-	"repo": "Hoshino-Yumetsuki/obsidian-plugin-abbrlink"
+	"isDesktopOnly": true
 }
