@@ -163,7 +163,7 @@ export default class AbbrLinkPlugin extends Plugin {
 		this.addRibbonIcon(
 			'link',
 			'Generate Abbrlinks',
-			async (evt: MouseEvent) => {
+			async () => {
 				try {
 					await this.processFiles()
 				} catch (error) {
