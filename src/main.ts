@@ -16,6 +16,11 @@ const DEFAULT_SETTINGS: AbbrLinkSettings = {
 	checkCollision: false
 }
 
+interface FileTask {
+	file: TFile
+	hasAbbrlink: boolean
+}
+
 export default class AbbrLinkPlugin extends Plugin {
 	settings: AbbrLinkSettings
 
@@ -122,6 +127,36 @@ export default class AbbrLinkPlugin extends Plugin {
 		}
 	}
 
+	private async buildTaskList(): Promise<FileTask[]> {
+		const files = this.app.vault.getMarkdownFiles()
+		const tasks: FileTask[] = []
+
+		for (const file of files) {
+			const content = await this.app.vault.read(file)
+			const hasAbbrlink = content.includes('abbrlink:')
+
+			if (!hasAbbrlink || !this.settings.skipExisting) {
+				tasks.push({ file, hasAbbrlink })
+			}
+		}
+
+		return tasks
+	}
+
+	private async processFiles(): Promise<void> {
+		new Notice('Building task list...')
+		const tasks = await this.buildTaskList()
+
+		if (tasks.length === 0) {
+			new Notice('No files need to be processed!')
+			return
+		}
+
+		new Notice(`Processing ${tasks.length} files...`)
+		await Promise.all(tasks.map((task) => this.processFile(task.file)))
+		new Notice('Abbrlinks generated successfully!')
+	}
+
 	async onload() {
 		await this.loadSettings()
 
@@ -130,12 +165,7 @@ export default class AbbrLinkPlugin extends Plugin {
 			'Generate Abbrlinks',
 			async (evt: MouseEvent) => {
 				try {
-					new Notice('Processing files...')
-					const files = this.app.vault.getMarkdownFiles()
-					await Promise.all(
-						files.map((file) => this.processFile(file))
-					)
-					new Notice('Abbrlinks generated successfully!')
+					await this.processFiles()
 				} catch (error) {
 					new Notice('Error generating abbrlinks!')
 					console.error(error)
@@ -232,9 +262,7 @@ class SampleSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('随机模式')
-			.setDesc(
-				'使用随机生成的 SHA256 作为 Abbrlink'
-			)
+			.setDesc('使用随机生成的 SHA256 作为 Abbrlink')
 			.addToggle((toggle) =>
 				toggle
 					.setValue(this.plugin.settings.useRandomMode)
