@@ -59,16 +59,6 @@ export default class AbbrLinkPlugin extends Plugin {
 		return match ? match[1] : null
 	}
 
-	private async isHashExisting(
-		hash: string,
-		currentFile: TFile
-	): Promise<boolean> {
-		const tasks = await this.taskManager.buildTaskList()
-		return tasks.some(
-			(task) => task.hash === hash && task.file.path !== currentFile.path
-		)
-	}
-
 	private async generateUniqueHash(file: TFile): Promise<string> {
 		return await this.generateSha256(file.basename)
 	}
@@ -109,9 +99,7 @@ export default class AbbrLinkPlugin extends Plugin {
 				checkCount,
 				this.settings.maxCollisionChecks
 			)
-			const updatedTasks = await this.taskManager.buildTaskList()
-			const conflicts =
-				await this.taskManager.findHashConflicts(updatedTasks)
+			const conflicts = await this.taskManager.findHashConflicts(tasks)
 
 			if (conflicts.length === 0) {
 				NoticeManager.showCollisionCheckStatus(
@@ -127,7 +115,7 @@ export default class AbbrLinkPlugin extends Plugin {
 				checkCount,
 				conflicts.length
 			)
-			await this.resolveConflicts(updatedTasks)
+			await this.resolveConflicts(tasks)
 			NoticeManager.showCollisionResolutionStatus(checkCount, 0)
 
 			if (
@@ -144,10 +132,10 @@ export default class AbbrLinkPlugin extends Plugin {
 					suggestedLength
 				)
 
-				console.log('链接冲突详细信息：')
+				console.log('Abbrlink 冲突详细信息：')
 				conflicts.forEach((conflict, index) => {
 					console.log(`冲突组 ${index + 1}：`)
-					console.log('哈希值：', conflict.hash)
+					console.log('Abbrlink：', conflict.hash)
 					console.log('冲突文件：')
 					conflict.files.forEach((file) => {
 						console.log(`- ${file.path}`)
@@ -167,7 +155,7 @@ export default class AbbrLinkPlugin extends Plugin {
 		const conflicts = await this.taskManager.findHashConflicts(tasks)
 		if (conflicts.length === 0) return
 
-		new Notice(`发现 ${conflicts.length} 处哈希冲突，正在解决...`)
+		new Notice(`发现 ${conflicts.length} 处 Abbrlink 冲突，正在解决...`)
 
 		for (const conflict of conflicts) {
 			const sortedFiles = conflict.files.sort(
@@ -285,8 +273,8 @@ class SampleSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName('Abbrlink Length')
 			.setDesc(
-				'哈希值的长度 (1-32)。' +
-					'如果经常发生冲突，建议增加��度。' +
+				'Abbrlink 的长度 (1-32)。' +
+					'如果经常发生冲突，建议增加 Abbrlink 长度。' +
 					'长度越长，发生冲突的概率越小。'
 			)
 			.addSlider((slider) =>
@@ -341,8 +329,8 @@ class SampleSettingTab extends PluginSettingTab {
 			)
 
 		new Setting(containerEl)
-			.setName('检查哈希冲突')
-			.setDesc('当检测到哈希值冲突时，自动切换到随机模式重新生成')
+			.setName('冲突检查')
+			.setDesc('当检测到 Abbrlink 冲突时，自动切换到随机模式重新生成')
 			.addToggle((toggle) =>
 				toggle
 					.setValue(this.plugin.settings.checkCollision)
