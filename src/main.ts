@@ -188,8 +188,6 @@ class SampleSettingTab extends PluginSettingTab {
 		const { containerEl } = this
 		containerEl.empty()
 
-		new Setting(containerEl).setName('常规').setHeading()
-
 		new Setting(containerEl)
 			.setName('Abbrlink 长度')
 			.setDesc('Abbrlink 长度 (4-32)')
