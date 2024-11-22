@@ -83,21 +83,7 @@ export default class AbbrLinkPlugin extends Plugin {
 	}
 
 	private async generateUniqueHash(file: TFile): Promise<string> {
-		let hash = await this.generateSha256(file.basename)
-
-		if (
-			this.settings.checkCollision &&
-			(await this.isHashExisting(hash, file))
-		) {
-			console.log(
-				`Hash collision detected for ${file.path}, using random mode`
-			)
-			do {
-				hash = await this.generateRandomHash()
-			} while (await this.isHashExisting(hash, file))
-		}
-
-		return hash
+		return await this.generateSha256(file.basename)
 	}
 
 	private async processFile(file: TFile): Promise<void> {
@@ -186,27 +172,58 @@ export default class AbbrLinkPlugin extends Plugin {
 	}
 
 	private async processFiles(): Promise<void> {
-		new Notice('Building task list...')
+		// 步骤 1: 生成
+		new Notice('Building task list for generation...')
 		const allTasks = await this.buildTaskList()
 
 		const tasksToProcess = this.settings.skipExisting
 			? allTasks.filter((task) => !task.hasAbbrlink)
 			: allTasks
 
-		if (tasksToProcess.length === 0) {
-			new Notice('No files need to be processed!')
-			return
-		}
-
-		new Notice(`Processing ${tasksToProcess.length} files...`)
-		await Promise.all(
-			tasksToProcess.map((task) => this.processFile(task.file))
-		)
-		new Notice('Abbrlinks generated successfully!')
-
 		if (this.settings.checkCollision) {
+			// 即使没有需要生成的链接，也显示第一步完成
+			if (tasksToProcess.length === 0) {
+				new Notice('Step 1/3: No new abbrlinks need to be generated')
+			} else {
+				new Notice(
+					`Step 1/3: Generating abbrlinks for ${tasksToProcess.length} files...`
+				)
+				await Promise.all(
+					tasksToProcess.map((task) => this.processFile(task.file))
+				)
+				new Notice('Step 1/3: Abbrlinks generated successfully!')
+			}
+
+			// 步骤 2 & 3: 检查并解决冲突
+			// 步骤 2: 检查冲突
+			new Notice('Step 2/3: Checking for hash conflicts...')
 			const updatedTasks = await this.buildTaskList()
+			const conflicts = await this.findHashConflicts(updatedTasks)
+
+			if (conflicts.length === 0) {
+				new Notice('Step 2/3: No conflicts found!')
+				return
+			}
+
+			new Notice(`Step 2/3: Found ${conflicts.length} hash conflicts`)
+
+			// 步骤 3: 解决冲突
+			new Notice('Step 3/3: Resolving conflicts...')
 			await this.resolveConflicts(updatedTasks)
+			new Notice('Step 3/3: All conflicts resolved!')
+		} else {
+			if (tasksToProcess.length === 0) {
+				new Notice('No files need to be processed!')
+				return
+			}
+
+			new Notice(
+				`Step 1/1: Generating abbrlinks for ${tasksToProcess.length} files...`
+			)
+			await Promise.all(
+				tasksToProcess.map((task) => this.processFile(task.file))
+			)
+			new Notice('Step 1/1: Abbrlinks generated successfully!')
 		}
 	}
 
