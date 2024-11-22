@@ -13,7 +13,7 @@ const DEFAULT_SETTINGS: AbbrLinkSettings = {
 	skipExisting: true,
 	autoGenerate: false,
 	useRandomMode: false,
-	checkCollision: true
+	checkCollision: false
 }
 
 export default class AbbrLinkPlugin extends Plugin {
@@ -206,7 +206,7 @@ class SampleSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('跳过已有链接')
-			.setDesc('如果文件已经包含缩略链接，则跳过处理')
+			.setDesc('如果文件已经包含 Abbrlink，则跳过')
 			.addToggle((toggle) =>
 				toggle
 					.setValue(this.plugin.settings.skipExisting)
@@ -218,7 +218,7 @@ class SampleSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('自动生成')
-			.setDesc('为新创建的 Markdown 文件自动生成缩略链接')
+			.setDesc('为新创建的 Markdown 文件自动生成 Abbrlink')
 			.addToggle((toggle) =>
 				toggle
 					.setValue(this.plugin.settings.autoGenerate)
@@ -233,7 +233,7 @@ class SampleSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName('随机模式')
 			.setDesc(
-				'使用随机生成的 SHA256 哈希值作为缩略链接，而不是基于文件名生成'
+				'使用随机生成的 SHA256 作为 Abbrlink'
 			)
 			.addToggle((toggle) =>
 				toggle
