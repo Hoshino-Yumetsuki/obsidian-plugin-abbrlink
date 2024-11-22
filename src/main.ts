@@ -77,8 +77,8 @@ export default class AbbrLinkPlugin extends Plugin {
 		currentFile: TFile
 	): Promise<boolean> {
 		const tasks = await this.buildTaskList()
-		return tasks.some(task => 
-			task.hash === hash && task.file.path !== currentFile.path
+		return tasks.some(
+			(task) => task.hash === hash && task.file.path !== currentFile.path
 		)
 	}
 
@@ -137,7 +137,9 @@ export default class AbbrLinkPlugin extends Plugin {
 		return tasks
 	}
 
-	private async findHashConflicts(tasks: FileTask[]): Promise<AbbrConflict[]> {
+	private async findHashConflicts(
+		tasks: FileTask[]
+	): Promise<AbbrConflict[]> {
 		const hashMap = new Map<string, TFile[]>()
 
 		for (const task of tasks) {
@@ -160,8 +162,8 @@ export default class AbbrLinkPlugin extends Plugin {
 		new Notice(`Found ${conflicts.length} hash conflicts. Resolving...`)
 
 		for (const conflict of conflicts) {
-			const sortedFiles = conflict.files.sort((a, b) => 
-				b.stat.ctime - a.stat.ctime
+			const sortedFiles = conflict.files.sort(
+				(a, b) => b.stat.ctime - a.stat.ctime
 			)
 
 			for (let i = 0; i < sortedFiles.length - 1; i++) {
@@ -169,7 +171,7 @@ export default class AbbrLinkPlugin extends Plugin {
 				let newHash: string
 				do {
 					newHash = await this.generateRandomHash()
-				} while (tasks.some(task => task.hash === newHash))
+				} while (tasks.some((task) => task.hash === newHash))
 
 				await this.app.fileManager.processFrontMatter(
 					file,
@@ -187,8 +189,8 @@ export default class AbbrLinkPlugin extends Plugin {
 		new Notice('Building task list...')
 		const allTasks = await this.buildTaskList()
 
-		const tasksToProcess = this.settings.skipExisting 
-			? allTasks.filter(task => !task.hasAbbrlink)
+		const tasksToProcess = this.settings.skipExisting
+			? allTasks.filter((task) => !task.hasAbbrlink)
 			: allTasks
 
 		if (tasksToProcess.length === 0) {
@@ -198,7 +200,7 @@ export default class AbbrLinkPlugin extends Plugin {
 
 		new Notice(`Processing ${tasksToProcess.length} files...`)
 		await Promise.all(
-			tasksToProcess.map(task => this.processFile(task.file))
+			tasksToProcess.map((task) => this.processFile(task.file))
 		)
 		new Notice('Abbrlinks generated successfully!')
 
