@@ -34,10 +34,14 @@ export class NoticeManager {
 		checkCount: number,
 		conflictsCount: number
 	): void {
-		new Notice(
-			`Step 2/3：第 ${checkCount} 轮检查发现 ${conflictsCount} 处冲突`
-		)
-		new Notice(`Step 3/3：正在解决第 ${checkCount} 轮冲突...`)
+		if (conflictsCount === 0) {
+			new Notice(`Step 3/3：第 ${checkCount} 轮检查未发现冲突`)
+		} else {
+			new Notice(
+				`Step 2/3：第 ${checkCount} 轮检查发现 ${conflictsCount} 处冲突`
+			)
+			new Notice(`Step 3/3：正在解决第 ${checkCount} 轮冲突...`)
+		}
 	}
 
 	static showCollisionWarning(
