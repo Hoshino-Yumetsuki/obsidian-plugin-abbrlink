@@ -6,6 +6,7 @@ interface AbbrLinkSettings {
 	autoGenerate: boolean
 	useRandomMode: boolean
 	checkCollision: boolean
+	maxCollisionChecks: number
 }
 
 const DEFAULT_SETTINGS: AbbrLinkSettings = {
@@ -13,7 +14,8 @@ const DEFAULT_SETTINGS: AbbrLinkSettings = {
 	skipExisting: true,
 	autoGenerate: false,
 	useRandomMode: false,
-	checkCollision: false
+	checkCollision: false,
+	maxCollisionChecks: 3
 }
 
 interface FileTask {
@@ -90,7 +92,8 @@ export default class AbbrLinkPlugin extends Plugin {
 		try {
 			const content = await this.app.vault.read(file)
 
-			if (content.includes('abbrlink:') && this.settings.skipExisting) {
+			const existingHash = await this.getExistingAbbrlink(content)
+			if (existingHash && this.settings.skipExisting) {
 				return
 			}
 
@@ -145,7 +148,7 @@ export default class AbbrLinkPlugin extends Plugin {
 		const conflicts = await this.findHashConflicts(tasks)
 		if (conflicts.length === 0) return
 
-		new Notice(`Found ${conflicts.length} hash conflicts. Resolving...`)
+		new Notice(`发现 ${conflicts.length} 处哈希冲突，正在解决...`)
 
 		for (const conflict of conflicts) {
 			const sortedFiles = conflict.files.sort(
@@ -168,12 +171,11 @@ export default class AbbrLinkPlugin extends Plugin {
 			}
 		}
 
-		new Notice('Hash conflicts resolved!')
+		new Notice('Abbrlink 冲突已解决！')
 	}
 
 	private async processFiles(): Promise<void> {
-		// 步骤 1: 生成
-		new Notice('Building task list for generation...')
+		new Notice('正在构建任务列表...')
 		const allTasks = await this.buildTaskList()
 
 		const tasksToProcess = this.settings.skipExisting
@@ -181,49 +183,89 @@ export default class AbbrLinkPlugin extends Plugin {
 			: allTasks
 
 		if (this.settings.checkCollision) {
-			// 即使没有需要生成的链接，也显示第一步完成
 			if (tasksToProcess.length === 0) {
-				new Notice('Step 1/3: No new abbrlinks need to be generated')
+				new Notice('Step 1/3：无需生成新的链接')
 			} else {
 				new Notice(
-					`Step 1/3: Generating abbrlinks for ${tasksToProcess.length} files...`
+					`Step 1/3：正在为 ${tasksToProcess.length} 个文件生成链接...`
 				)
 				await Promise.all(
 					tasksToProcess.map((task) => this.processFile(task.file))
 				)
-				new Notice('Step 1/3: Abbrlinks generated successfully!')
+				new Notice('Step 1/3：链接生成完成')
 			}
 
-			// 步骤 2 & 3: 检查并解决冲突
-			// 步骤 2: 检查冲突
-			new Notice('Step 2/3: Checking for hash conflicts...')
-			const updatedTasks = await this.buildTaskList()
-			const conflicts = await this.findHashConflicts(updatedTasks)
+			let checkCount = 0
+			let hasConflicts = true
 
-			if (conflicts.length === 0) {
-				new Notice('Step 2/3: No conflicts found!')
-				return
+			while (
+				hasConflicts &&
+				checkCount < this.settings.maxCollisionChecks
+			) {
+				checkCount++
+
+				new Notice(
+					`Step 2/3：正在检查哈希冲突... (第 ${checkCount}/${this.settings.maxCollisionChecks} 轮)`
+				)
+				const updatedTasks = await this.buildTaskList()
+				const conflicts = await this.findHashConflicts(updatedTasks)
+
+				if (conflicts.length === 0) {
+					new Notice(`Step 2/3：第 ${checkCount} 轮检查未发现冲突`)
+					new Notice('Step 3/3：无需解决冲突')
+					hasConflicts = false
+					return
+				}
+
+				new Notice(
+					`Step 2/3：第 ${checkCount} 轮检查发现 ${conflicts.length} 处冲突`
+				)
+
+				new Notice(`Step 3/3：正在解决第 ${checkCount} 轮冲突...`)
+				await this.resolveConflicts(updatedTasks)
+				new Notice(`Step 3/3：第 ${checkCount} 轮冲突已解决`)
+
+				if (
+					checkCount === this.settings.maxCollisionChecks &&
+					conflicts.length > 0
+				) {
+					const currentLength = this.settings.hashLength
+					const suggestedLength = Math.min(currentLength + 4, 32)
+
+					new Notice(
+						`警告：经过 ${checkCount} 轮检查后仍存在 ${conflicts.length} 处冲突。\n\n` +
+							'建议采取以下措施：\n' +
+							`1. 增加链接长度（当前：${currentLength}，建议：${suggestedLength}）\n` +
+							'2. 减少文章数量\n' +
+							'3. 增加最大检查次数\n\n' +
+							'您可以在插件设置中调整这些选项。',
+						10000
+					)
+
+					console.log('链接冲突详细信息：')
+					conflicts.forEach((conflict, index) => {
+						console.log(`冲突组 ${index + 1}：`)
+						console.log('哈希值：', conflict.hash)
+						console.log('冲突文件：')
+						conflict.files.forEach((file) => {
+							console.log(`- ${file.path}`)
+						})
+					})
+				}
 			}
-
-			new Notice(`Step 2/3: Found ${conflicts.length} hash conflicts`)
-
-			// 步骤 3: 解决冲突
-			new Notice('Step 3/3: Resolving conflicts...')
-			await this.resolveConflicts(updatedTasks)
-			new Notice('Step 3/3: All conflicts resolved!')
 		} else {
 			if (tasksToProcess.length === 0) {
-				new Notice('No files need to be processed!')
+				new Notice('无需处理任何文件')
 				return
 			}
 
 			new Notice(
-				`Step 1/1: Generating abbrlinks for ${tasksToProcess.length} files...`
+				`Step 1/1：正在为 ${tasksToProcess.length} 个文件生成链接...`
 			)
 			await Promise.all(
 				tasksToProcess.map((task) => this.processFile(task.file))
 			)
-			new Notice('Step 1/1: Abbrlinks generated successfully!')
+			new Notice('Step 1/1：链接生成完成')
 		}
 	}
 
@@ -285,8 +327,12 @@ class SampleSettingTab extends PluginSettingTab {
 		containerEl.empty()
 
 		new Setting(containerEl)
-			.setName('Abbrlink 长度')
-			.setDesc('Abbrlink 长度 (4-32)')
+			.setName('Abbrlink Length')
+			.setDesc(
+				'哈希值的长度 (1-32)。' +
+					'如果经常发生冲突，建议增加长度。' +
+					'长度越长，发生冲突的概率越小。'
+			)
 			.addSlider((slider) =>
 				slider
 					.setLimits(4, 32, 4)
@@ -346,6 +392,20 @@ class SampleSettingTab extends PluginSettingTab {
 					.setValue(this.plugin.settings.checkCollision)
 					.onChange(async (value) => {
 						this.plugin.settings.checkCollision = value
+						await this.plugin.saveSettings()
+					})
+			)
+
+		new Setting(containerEl)
+			.setName('最大冲突检查次数')
+			.setDesc('当开启冲突检查时，最多重复检查的次数 (1-10)')
+			.addSlider((slider) =>
+				slider
+					.setLimits(1, 10, 1)
+					.setValue(this.plugin.settings.maxCollisionChecks)
+					.setDynamicTooltip()
+					.onChange(async (value) => {
+						this.plugin.settings.maxCollisionChecks = value
 						await this.plugin.saveSettings()
 					})
 			)
