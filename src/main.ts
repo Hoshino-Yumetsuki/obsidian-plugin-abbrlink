@@ -124,10 +124,6 @@ export default class AbbrLinkPlugin extends Plugin {
 					)
 				)
 
-				NoticeManager.showCollisionCheckStatus(
-					checkCount,
-					this.settings.maxCollisionChecks
-				)
 				NoticeManager.showCollisionResolutionStatus(checkCount, 0)
 				hasConflicts = false
 				return
@@ -222,7 +218,7 @@ export default class AbbrLinkPlugin extends Plugin {
 		NoticeManager.showProcessingStatus(
 			newLinksCount,
 			updateLinksCount,
-			ProcessStep.BUILD_TASK_LIST
+			ProcessStep.CHECK_COLLISION
 		)
 
 		if (this.settings.checkCollision) {
