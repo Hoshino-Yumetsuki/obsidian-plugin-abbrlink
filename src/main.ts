@@ -91,17 +91,39 @@ export default class AbbrLinkPlugin extends Plugin {
 	): Promise<void> {
 		let checkCount = 0
 		let hasConflicts = true
+		const currentTasks = [...tasks] // 创建任务副本以跟踪更新
 
 		while (hasConflicts && checkCount < this.settings.maxCollisionChecks) {
 			checkCount++
+
+			// 为所有需要处理的任务生成哈希值
+			for (const task of currentTasks) {
+				if (!task.hash) {
+					const hash = await this.generateUniqueHash(task.file)
+					task.hash = hash
+				}
+			}
 
 			NoticeManager.showCollisionCheckStatus(
 				checkCount,
 				this.settings.maxCollisionChecks
 			)
-			const conflicts = await this.taskManager.findHashConflicts(tasks)
+			const conflicts =
+				await this.taskManager.findHashConflicts(currentTasks)
 
 			if (conflicts.length === 0) {
+				// 没有冲突时，写入所有哈希值
+				await Promise.all(
+					currentTasks.map((task) =>
+						this.app.fileManager.processFrontMatter(
+							task.file,
+							(frontmatter) => {
+								frontmatter.abbrlink = task.hash
+							}
+						)
+					)
+				)
+
 				NoticeManager.showCollisionCheckStatus(
 					checkCount,
 					this.settings.maxCollisionChecks
@@ -115,7 +137,7 @@ export default class AbbrLinkPlugin extends Plugin {
 				checkCount,
 				conflicts.length
 			)
-			await this.resolveConflicts(tasks)
+			await this.resolveConflicts(currentTasks)
 			NoticeManager.showCollisionResolutionStatus(checkCount, 0)
 
 			if (
@@ -158,23 +180,23 @@ export default class AbbrLinkPlugin extends Plugin {
 		new Notice(`发现 ${conflicts.length} 处 Abbrlink 冲突，正在解决...`)
 
 		for (const conflict of conflicts) {
+			// 按创建时间排序，最旧的在前面
 			const sortedFiles = conflict.files.sort(
-				(a, b) => b.stat.ctime - a.stat.ctime
+				(a, b) => a.stat.ctime - b.stat.ctime
 			)
 
-			for (let i = 0; i < sortedFiles.length - 1; i++) {
+			for (let i = 1; i < sortedFiles.length; i++) {
 				const file = sortedFiles[i]
 				let newHash: string
 				do {
 					newHash = await this.generateRandomHash()
 				} while (tasks.some((task) => task.hash === newHash))
 
-				await this.app.fileManager.processFrontMatter(
-					file,
-					(frontmatter) => {
-						frontmatter.abbrlink = newHash
-					}
-				)
+				// 更新任务列表中的哈希值
+				const task = tasks.find((t) => t.file.path === file.path)
+				if (task) {
+					task.hash = newHash
+				}
 			}
 		}
 
@@ -204,7 +226,6 @@ export default class AbbrLinkPlugin extends Plugin {
 		)
 
 		if (this.settings.checkCollision) {
-			await this.processFilesWithoutCollisionCheck(tasksToProcess)
 			await this.processFilesWithCollisionCheck(tasksToProcess)
 		} else {
 			await this.processFilesWithoutCollisionCheck(tasksToProcess)
