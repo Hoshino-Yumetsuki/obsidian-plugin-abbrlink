@@ -89,7 +89,7 @@ export class NoticeManager {
 		new Notice(
 			`警告：经过 ${checkCount} 轮检查后仍存在 ${conflicts} 处冲突。\n\n` +
 				'建议采取以下措施：\n' +
-				`1. 增加链接长度（当前：${currentLength}，建议：${suggestedLength}）\n` +
+				`1. 增加 Abbrlink 长度（当前：${currentLength}，建议：${suggestedLength}）\n` +
 				'2. 减少文章数量\n' +
 				'3. 增加最大检查次数\n\n' +
 				'您可以在插件设置中调整这些选项。',
