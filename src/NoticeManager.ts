@@ -4,29 +4,58 @@ export interface NoticeOptions {
 	timeout?: number
 }
 
+export const ProcessStep = {
+	BUILD_TASK_LIST: 1,
+	CHECK_COLLISION: 2,
+	RESOLVE_COLLISION: 3
+} as const
+
+export type ProcessStepType = (typeof ProcessStep)[keyof typeof ProcessStep]
+
 export class NoticeManager {
+	private static readonly TOTAL_STEPS = 3
+
+	private static formatStepMessage(
+		step: ProcessStepType,
+		message: string
+	): string {
+		return `步骤 ${step}/${this.TOTAL_STEPS}：${message}`
+	}
+
+	static showStepStatus(
+		step: ProcessStepType,
+		message: string,
+		options?: NoticeOptions
+	): void {
+		new Notice(this.formatStepMessage(step, message), options?.timeout)
+	}
+
 	static showProcessingStatus(
 		newLinksCount: number,
 		updateLinksCount: number,
-		step: string,
+		step: ProcessStepType,
 		options?: NoticeOptions
 	): void {
-		let message = `${step}：`
+		let message = ''
 		if (newLinksCount > 0) {
 			message += `正在为 ${newLinksCount} 个文件生成链接`
 		}
 		if (updateLinksCount > 0) {
 			message += `${newLinksCount > 0 ? '，' : ''}正在更新 ${updateLinksCount} 个不一致长度的链接`
 		}
-		new Notice(message + '...', options?.timeout)
+		new Notice(
+			this.formatStepMessage(step, message + '...'),
+			options?.timeout
+		)
 	}
 
 	static showCollisionCheckStatus(
 		checkCount: number,
 		maxChecks: number
 	): void {
-		new Notice(
-			`Step 2/3：正在检查哈希冲突... (第 ${checkCount}/${maxChecks} 轮)`
+		this.showStepStatus(
+			ProcessStep.CHECK_COLLISION,
+			`正在检查 Abbrlink 冲突... (第 ${checkCount}/${maxChecks} 轮)`
 		)
 	}
 
@@ -35,12 +64,19 @@ export class NoticeManager {
 		conflictsCount: number
 	): void {
 		if (conflictsCount === 0) {
-			new Notice(`Step 3/3：第 ${checkCount} 轮检查未发现冲突`)
-		} else {
-			new Notice(
-				`Step 2/3：第 ${checkCount} 轮检查发现 ${conflictsCount} 处冲突`
+			this.showStepStatus(
+				ProcessStep.RESOLVE_COLLISION,
+				`第 ${checkCount} 轮检查未发现冲突`
 			)
-			new Notice(`Step 3/3：正在解决第 ${checkCount} 轮冲突...`)
+		} else {
+			this.showStepStatus(
+				ProcessStep.CHECK_COLLISION,
+				`第 ${checkCount} 轮检查发现 ${conflictsCount} 处冲突`
+			)
+			this.showStepStatus(
+				ProcessStep.RESOLVE_COLLISION,
+				`正在解决第 ${checkCount} 轮冲突...`
+			)
 		}
 	}
 

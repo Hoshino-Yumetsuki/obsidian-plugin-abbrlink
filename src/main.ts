@@ -1,5 +1,5 @@
 import { App, Notice, Plugin, PluginSettingTab, Setting, TFile } from 'obsidian'
-import { NoticeManager } from './NoticeManager'
+import { NoticeManager, ProcessStep } from './NoticeManager'
 import { TaskManager, FileTask } from './TaskManager'
 import { AbbrLinkSettings } from './types'
 
@@ -182,7 +182,11 @@ export default class AbbrLinkPlugin extends Plugin {
 	}
 
 	private async processFiles(): Promise<void> {
-		new Notice('Step 1/3：正在构建任务列表...')
+		NoticeManager.showStepStatus(
+			ProcessStep.BUILD_TASK_LIST,
+			'正在构建任务列表...'
+		)
+
 		const allTasks = await this.taskManager.buildTaskList()
 		const tasksToProcess = this.taskManager.filterTasksToProcess(allTasks)
 
@@ -196,7 +200,7 @@ export default class AbbrLinkPlugin extends Plugin {
 		NoticeManager.showProcessingStatus(
 			newLinksCount,
 			updateLinksCount,
-			'Step 1/3'
+			ProcessStep.BUILD_TASK_LIST
 		)
 
 		if (this.settings.checkCollision) {
