@@ -170,6 +170,10 @@ export default class AbbrLinkPlugin extends Plugin {
 	}
 
 	private async resolveConflicts(tasks: FileTask[]): Promise<void> {
+		const usedHashes = new Set(
+			tasks.map((task) => task.hash).filter(Boolean)
+		)
+
 		const conflicts = await this.taskManager.findHashConflicts(tasks)
 		if (conflicts.length === 0) return
 
@@ -186,7 +190,7 @@ export default class AbbrLinkPlugin extends Plugin {
 				let newHash: string
 				do {
 					newHash = await this.generateRandomHash()
-				} while (tasks.some((task) => task.hash === newHash))
+				} while (usedHashes.has(newHash))
 
 				// 更新任务列表中的哈希值
 				const task = tasks.find((t) => t.file.path === file.path)
@@ -387,5 +391,50 @@ class SampleSettingTab extends PluginSettingTab {
 						await this.plugin.saveSettings()
 					})
 			)
+	}
+}
+
+export class HashGenerator {
+	private readonly settings: AbbrLinkSettings
+
+	constructor(settings: AbbrLinkSettings) {
+		this.settings = settings
+	}
+
+	async generateRandomHash(): Promise<string> {
+		const randomBytes = new Uint8Array(32)
+		window.crypto.getRandomValues(randomBytes)
+
+		const hashBuffer = await window.crypto.subtle.digest(
+			'SHA-256',
+			randomBytes
+		)
+		const hashArray = Array.from(new Uint8Array(hashBuffer))
+		const hashHex = hashArray
+			.map((b) => b.toString(16).padStart(2, '0'))
+			.join('')
+
+		return hashHex.substring(0, this.settings.hashLength)
+	}
+
+	async generateSha256(str: string): Promise<string> {
+		if (this.settings.useRandomMode) {
+			return await this.generateRandomHash()
+		}
+
+		const encoder = new window.TextEncoder()
+		const data = encoder.encode(str)
+
+		const hashBuffer = await window.crypto.subtle.digest('SHA-256', data)
+		const hashArray = Array.from(new Uint8Array(hashBuffer))
+		const hashHex = hashArray
+			.map((b) => b.toString(16).padStart(2, '0'))
+			.join('')
+
+		return hashHex.substring(0, this.settings.hashLength)
+	}
+
+	async generateUniqueHash(file: TFile): Promise<string> {
+		return await this.generateSha256(file.basename)
 	}
 }

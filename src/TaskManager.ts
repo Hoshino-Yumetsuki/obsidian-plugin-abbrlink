@@ -30,23 +30,23 @@ export class TaskManager {
 
 	async buildTaskList(): Promise<FileTask[]> {
 		const files = this.#vault.getMarkdownFiles()
-		const tasks: FileTask[] = []
+		const tasks = await Promise.all(
+			files.map(async (file) => {
+				const content = await this.#vault.read(file)
+				const hash = await this.#getExistingAbbrlink(content)
+				const hasAbbrlink = !!hash
+				const needsLengthUpdate = !!(
+					hash && hash.length !== this.#settings.hashLength
+				)
 
-		for (const file of files) {
-			const content = await this.#vault.read(file)
-			const hash = await this.#getExistingAbbrlink(content)
-			const hasAbbrlink = !!hash
-			const needsLengthUpdate = !!(
-				hash && hash.length !== this.#settings.hashLength
-			)
-
-			tasks.push({
-				file,
-				hasAbbrlink,
-				hash: hash || undefined,
-				needsLengthUpdate
+				return {
+					file,
+					hasAbbrlink,
+					hash: hash || undefined,
+					needsLengthUpdate
+				}
 			})
-		}
+		)
 
 		return tasks
 	}
