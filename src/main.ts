@@ -2,6 +2,7 @@ import { App, Notice, Plugin, PluginSettingTab, Setting, TFile } from 'obsidian'
 import { NoticeManager, ProcessStep } from './NoticeManager'
 import { TaskManager, FileTask } from './TaskManager'
 import { AbbrLinkSettings } from './types'
+import { generateRandomHash, generateUniqueHash, getExistingAbbrlink } from './utils/hash'
 
 const DEFAULT_SETTINGS: AbbrLinkSettings = {
 	hashLength: 8,
@@ -17,62 +18,16 @@ export default class AbbrLinkPlugin extends Plugin {
 	settings: AbbrLinkSettings
 	private taskManager: TaskManager
 
-	private async generateRandomHash(): Promise<string> {
-		const randomBytes = new Uint8Array(32)
-		window.crypto.getRandomValues(randomBytes)
-
-		const hashBuffer = await window.crypto.subtle.digest(
-			'SHA-256',
-			randomBytes
-		)
-		const hashArray = Array.from(new Uint8Array(hashBuffer))
-		const hashHex = hashArray
-			.map((b) => b.toString(16).padStart(2, '0'))
-			.join('')
-
-		return hashHex.substring(0, this.settings.hashLength)
-	}
-
-	private async generateSha256(str: string): Promise<string> {
-		if (this.settings.useRandomMode) {
-			return await this.generateRandomHash()
-		}
-
-		const encoder = new window.TextEncoder()
-		const data = encoder.encode(str)
-
-		const hashBuffer = await window.crypto.subtle.digest('SHA-256', data)
-		const hashArray = Array.from(new Uint8Array(hashBuffer))
-		const hashHex = hashArray
-			.map((b) => b.toString(16).padStart(2, '0'))
-			.join('')
-
-		return hashHex.substring(0, this.settings.hashLength)
-	}
-
-	private async getExistingAbbrlink(content: string): Promise<string | null> {
-		const match = content.match(
-			new RegExp(
-				`abbrlink:\\s*([a-fA-F0-9]{${this.settings.hashLength}})`
-			)
-		)
-		return match ? match[1] : null
-	}
-
-	private async generateUniqueHash(file: TFile): Promise<string> {
-		return await this.generateSha256(file.basename)
-	}
-
 	private async processFile(file: TFile): Promise<void> {
 		try {
 			const content = await this.app.vault.read(file)
 
-			const existingHash = await this.getExistingAbbrlink(content)
+			const existingHash = await getExistingAbbrlink(content, this.settings.hashLength)
 			if (existingHash && this.settings.skipExisting) {
 				return
 			}
 
-			const abbrlink = await this.generateUniqueHash(file)
+			const abbrlink = await generateUniqueHash(file, this.settings)
 
 			await this.app.fileManager.processFrontMatter(
 				file,
@@ -99,7 +54,7 @@ export default class AbbrLinkPlugin extends Plugin {
 			// 为所有需要处理的任务生成哈希值
 			for (const task of currentTasks) {
 				if (!task.hash) {
-					const hash = await this.generateUniqueHash(task.file)
+					const hash = await generateUniqueHash(task.file, this.settings)
 					task.hash = hash
 				}
 			}
@@ -189,7 +144,7 @@ export default class AbbrLinkPlugin extends Plugin {
 				const file = sortedFiles[i]
 				let newHash: string
 				do {
-					newHash = await this.generateRandomHash()
+					newHash = await generateRandomHash(this.settings.hashLength)
 				} while (usedHashes.has(newHash))
 
 				// 更新任务列表中的哈希值
@@ -239,7 +194,7 @@ export default class AbbrLinkPlugin extends Plugin {
 		this.taskManager = new TaskManager(
 			this.app.vault,
 			this.settings,
-			this.getExistingAbbrlink.bind(this)
+			(content: string) => getExistingAbbrlink(content, this.settings.hashLength)
 		)
 
 		this.addRibbonIcon('link', 'Generate Abbrlinks', async () => {
@@ -391,50 +346,5 @@ class SampleSettingTab extends PluginSettingTab {
 						await this.plugin.saveSettings()
 					})
 			)
-	}
-}
-
-export class HashGenerator {
-	private readonly settings: AbbrLinkSettings
-
-	constructor(settings: AbbrLinkSettings) {
-		this.settings = settings
-	}
-
-	async generateRandomHash(): Promise<string> {
-		const randomBytes = new Uint8Array(32)
-		window.crypto.getRandomValues(randomBytes)
-
-		const hashBuffer = await window.crypto.subtle.digest(
-			'SHA-256',
-			randomBytes
-		)
-		const hashArray = Array.from(new Uint8Array(hashBuffer))
-		const hashHex = hashArray
-			.map((b) => b.toString(16).padStart(2, '0'))
-			.join('')
-
-		return hashHex.substring(0, this.settings.hashLength)
-	}
-
-	async generateSha256(str: string): Promise<string> {
-		if (this.settings.useRandomMode) {
-			return await this.generateRandomHash()
-		}
-
-		const encoder = new window.TextEncoder()
-		const data = encoder.encode(str)
-
-		const hashBuffer = await window.crypto.subtle.digest('SHA-256', data)
-		const hashArray = Array.from(new Uint8Array(hashBuffer))
-		const hashHex = hashArray
-			.map((b) => b.toString(16).padStart(2, '0'))
-			.join('')
-
-		return hashHex.substring(0, this.settings.hashLength)
-	}
-
-	async generateUniqueHash(file: TFile): Promise<string> {
-		return await this.generateSha256(file.basename)
 	}
 }
