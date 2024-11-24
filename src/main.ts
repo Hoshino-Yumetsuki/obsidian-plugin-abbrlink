@@ -2,7 +2,11 @@ import { App, Notice, Plugin, PluginSettingTab, Setting, TFile } from 'obsidian'
 import { NoticeManager, ProcessStep } from './NoticeManager'
 import { TaskManager, FileTask } from './TaskManager'
 import { AbbrLinkSettings } from './types'
-import { generateRandomHash, generateUniqueHash, getExistingAbbrlink } from './utils/hash'
+import {
+	generateRandomHash,
+	generateUniqueHash,
+	getExistingAbbrlink
+} from './utils/hash'
 
 const DEFAULT_SETTINGS: AbbrLinkSettings = {
 	hashLength: 8,
@@ -22,7 +26,10 @@ export default class AbbrLinkPlugin extends Plugin {
 		try {
 			const content = await this.app.vault.read(file)
 
-			const existingHash = await getExistingAbbrlink(content, this.settings.hashLength)
+			const existingHash = await getExistingAbbrlink(
+				content,
+				this.settings.hashLength
+			)
 			if (existingHash && this.settings.skipExisting) {
 				return
 			}
@@ -54,7 +61,10 @@ export default class AbbrLinkPlugin extends Plugin {
 			// 为所有需要处理的任务生成哈希值
 			for (const task of currentTasks) {
 				if (!task.hash) {
-					const hash = await generateUniqueHash(task.file, this.settings)
+					const hash = await generateUniqueHash(
+						task.file,
+						this.settings
+					)
 					task.hash = hash
 				}
 			}
@@ -194,7 +204,8 @@ export default class AbbrLinkPlugin extends Plugin {
 		this.taskManager = new TaskManager(
 			this.app.vault,
 			this.settings,
-			(content: string) => getExistingAbbrlink(content, this.settings.hashLength)
+			(content: string) =>
+				getExistingAbbrlink(content, this.settings.hashLength)
 		)
 
 		this.addRibbonIcon('link', 'Generate Abbrlinks', async () => {
