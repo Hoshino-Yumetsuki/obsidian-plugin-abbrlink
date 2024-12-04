@@ -48,82 +48,48 @@ export default class AbbrLinkPlugin extends Plugin {
 		}
 	}
 
-	private async processFilesWithCollisionCheck(
-		tasks: FileTask[]
-	): Promise<void> {
+	private async processFilesWithCollisionCheck(tasks: FileTask[]): Promise<void> {
 		let checkCount = 0
 		let hasConflicts = true
-		const currentTasks = [...tasks] // 创建任务副本以跟踪更新
+		const currentTasks = [...tasks]
 
 		while (hasConflicts && checkCount < this.settings.maxCollisionChecks) {
 			checkCount++
 
-			// 为所有需要处理的任务生成哈希值
+			// 生成哈希值
 			for (const task of currentTasks) {
 				if (!task.hash) {
-					const hash = await generateUniqueHash(
-						task.file,
-						this.settings
-					)
-					task.hash = hash
+					task.hash = await generateUniqueHash(task.file, this.settings)
 				}
 			}
 
-			NoticeManager.showCollisionCheckStatus(
-				checkCount,
-				this.settings.maxCollisionChecks
-			)
-			const conflicts =
-				await this.taskManager.findHashConflicts(currentTasks)
+			const conflicts = await this.taskManager.findHashConflicts(currentTasks)
 
 			if (conflicts.length === 0) {
-				// 没有冲突时，写入所有哈希值
+				// 写入哈希值
 				await Promise.all(
 					currentTasks.map((task) =>
 						this.app.fileManager.processFrontMatter(
-							task.file,
-							(frontmatter) => {
-								frontmatter.abbrlink = task.hash
-							}
-						)
+								task.file,
+								(frontmatter) => {
+									frontmatter.abbrlink = task.hash
+								}
+							)
 					)
 				)
-
-				NoticeManager.showCollisionResolutionStatus(checkCount, 0)
 				hasConflicts = false
 				return
 			}
 
-			NoticeManager.showCollisionResolutionStatus(
-				checkCount,
-				conflicts.length
-			)
+			NoticeManager.showCollisionStatus(checkCount, conflicts.length)
 			await this.resolveConflicts(currentTasks)
-			NoticeManager.showCollisionResolutionStatus(checkCount, 0)
 
-			if (
-				checkCount === this.settings.maxCollisionChecks &&
-				conflicts.length > 0
-			) {
-				const currentLength = this.settings.hashLength
-				const suggestedLength = Math.min(currentLength + 4, 32)
-
+			if (checkCount === this.settings.maxCollisionChecks && conflicts.length > 0) {
 				NoticeManager.showCollisionWarning(
-					checkCount,
 					conflicts.length,
-					currentLength,
-					suggestedLength
+					this.settings.hashLength,
+					Math.min(this.settings.hashLength + 4, 32)
 				)
-
-				console.log('Abbrlink 冲突详细信息：')
-				conflicts.forEach((conflict, index) => {
-					console.log(`冲突组 ${index + 1}：`)
-					console.log('Abbrlink：', conflict.hash)
-					console.log('冲突文件：')
-					conflict.files.forEach((file) => {
-						console.log(`- ${file.path}`)
-					})
-				})
 			}
 		}
 	}
@@ -169,26 +135,13 @@ export default class AbbrLinkPlugin extends Plugin {
 	}
 
 	private async processFiles(): Promise<void> {
-		NoticeManager.showStepStatus(
-			ProcessStep.BUILD_TASK_LIST,
-			'正在构建任务列表...'
-		)
-
 		const allTasks = await this.taskManager.buildTaskList()
 		const tasksToProcess = this.taskManager.filterTasksToProcess(allTasks)
 
-		const newLinksCount = tasksToProcess.filter(
-			(task) => !task.hasAbbrlink
-		).length
-		const updateLinksCount = tasksToProcess.filter(
-			(task) => task.needsLengthUpdate
-		).length
+		const newLinksCount = tasksToProcess.filter(task => !task.hasAbbrlink).length
+		const updateLinksCount = tasksToProcess.filter(task => task.needsLengthUpdate).length
 
-		NoticeManager.showProcessingStatus(
-			newLinksCount,
-			updateLinksCount,
-			ProcessStep.CHECK_COLLISION
-		)
+		NoticeManager.showProcessingStatus(newLinksCount, updateLinksCount)
 
 		if (this.settings.checkCollision) {
 			await this.processFilesWithCollisionCheck(tasksToProcess)
