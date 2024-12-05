@@ -1,5 +1,5 @@
 import { App, Notice, Plugin, PluginSettingTab, Setting, TFile } from 'obsidian'
-import { NoticeManager, ProcessStep } from './NoticeManager'
+import { NoticeManager } from './NoticeManager'
 import { TaskManager, FileTask } from './TaskManager'
 import { AbbrLinkSettings } from './types'
 import {
@@ -48,7 +48,9 @@ export default class AbbrLinkPlugin extends Plugin {
 		}
 	}
 
-	private async processFilesWithCollisionCheck(tasks: FileTask[]): Promise<void> {
+	private async processFilesWithCollisionCheck(
+		tasks: FileTask[]
+	): Promise<void> {
 		let checkCount = 0
 		let hasConflicts = true
 		const currentTasks = [...tasks]
@@ -59,22 +61,26 @@ export default class AbbrLinkPlugin extends Plugin {
 			// 生成哈希值
 			for (const task of currentTasks) {
 				if (!task.hash) {
-					task.hash = await generateUniqueHash(task.file, this.settings)
+					task.hash = await generateUniqueHash(
+						task.file,
+						this.settings
+					)
 				}
 			}
 
-			const conflicts = await this.taskManager.findHashConflicts(currentTasks)
+			const conflicts =
+				await this.taskManager.findHashConflicts(currentTasks)
 
 			if (conflicts.length === 0) {
 				// 写入哈希值
 				await Promise.all(
 					currentTasks.map((task) =>
 						this.app.fileManager.processFrontMatter(
-								task.file,
-								(frontmatter) => {
-									frontmatter.abbrlink = task.hash
-								}
-							)
+							task.file,
+							(frontmatter) => {
+								frontmatter.abbrlink = task.hash
+							}
+						)
 					)
 				)
 				hasConflicts = false
@@ -84,7 +90,10 @@ export default class AbbrLinkPlugin extends Plugin {
 			NoticeManager.showCollisionStatus(checkCount, conflicts.length)
 			await this.resolveConflicts(currentTasks)
 
-			if (checkCount === this.settings.maxCollisionChecks && conflicts.length > 0) {
+			if (
+				checkCount === this.settings.maxCollisionChecks &&
+				conflicts.length > 0
+			) {
 				NoticeManager.showCollisionWarning(
 					conflicts.length,
 					this.settings.hashLength,
@@ -138,8 +147,12 @@ export default class AbbrLinkPlugin extends Plugin {
 		const allTasks = await this.taskManager.buildTaskList()
 		const tasksToProcess = this.taskManager.filterTasksToProcess(allTasks)
 
-		const newLinksCount = tasksToProcess.filter(task => !task.hasAbbrlink).length
-		const updateLinksCount = tasksToProcess.filter(task => task.needsLengthUpdate).length
+		const newLinksCount = tasksToProcess.filter(
+			(task) => !task.hasAbbrlink
+		).length
+		const updateLinksCount = tasksToProcess.filter(
+			(task) => task.needsLengthUpdate
+		).length
 
 		NoticeManager.showProcessingStatus(newLinksCount, updateLinksCount)
 
