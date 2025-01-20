@@ -9,7 +9,10 @@ function hexToDecimal(hex: string, maxLength: number): string {
 	return decimal.slice(0, maxLength)
 }
 
-export async function generateRandomHash(hashLength: number, useDecimal: boolean = false): Promise<string> {
+export async function generateRandomHash(
+	hashLength: number,
+	useDecimal: boolean = false
+): Promise<string> {
 	const randomBytes = new Uint8Array(32)
 	window.crypto.getRandomValues(randomBytes)
 
@@ -30,7 +33,10 @@ export async function generateSha256(
 	settings: AbbrLinkSettings
 ): Promise<string> {
 	if (settings.useRandomMode) {
-		return await generateRandomHash(settings.hashLength, settings.useDecimal)
+		return await generateRandomHash(
+			settings.hashLength,
+			settings.useDecimal
+		)
 	}
 
 	const encoder = new window.TextEncoder()
@@ -60,7 +66,7 @@ export async function getExistingAbbrlink(
 	hashLength: number,
 	useDecimal: boolean = false
 ): Promise<string | null> {
-	const pattern = useDecimal 
+	const pattern = useDecimal
 		? `abbrlink:\\s*(\\d{1,${hashLength}})`
 		: `abbrlink:\\s*([a-fA-F0-9]{${hashLength}})`
 	const match = content.match(new RegExp(pattern))
