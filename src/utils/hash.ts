@@ -1,7 +1,15 @@
 import { TFile } from 'obsidian'
 import { AbbrLinkSettings } from '../types'
 
-export async function generateRandomHash(hashLength: number): Promise<string> {
+function hexToDecimal(hex: string, maxLength: number): string {
+	const decimal = BigInt(`0x${hex}`).toString()
+	if (decimal.length < maxLength) {
+		return decimal.padStart(maxLength, '0')
+	}
+	return decimal.slice(0, maxLength)
+}
+
+export async function generateRandomHash(hashLength: number, useDecimal: boolean = false): Promise<string> {
 	const randomBytes = new Uint8Array(32)
 	window.crypto.getRandomValues(randomBytes)
 
@@ -11,6 +19,9 @@ export async function generateRandomHash(hashLength: number): Promise<string> {
 		.map((b) => b.toString(16).padStart(2, '0'))
 		.join('')
 
+	if (useDecimal) {
+		return hexToDecimal(hashHex, hashLength)
+	}
 	return hashHex.substring(0, hashLength)
 }
 
@@ -19,7 +30,7 @@ export async function generateSha256(
 	settings: AbbrLinkSettings
 ): Promise<string> {
 	if (settings.useRandomMode) {
-		return await generateRandomHash(settings.hashLength)
+		return await generateRandomHash(settings.hashLength, settings.useDecimal)
 	}
 
 	const encoder = new window.TextEncoder()
@@ -31,6 +42,9 @@ export async function generateSha256(
 		.map((b) => b.toString(16).padStart(2, '0'))
 		.join('')
 
+	if (settings.useDecimal) {
+		return hexToDecimal(hashHex, settings.hashLength)
+	}
 	return hashHex.substring(0, settings.hashLength)
 }
 
@@ -43,10 +57,12 @@ export async function generateUniqueHash(
 
 export async function getExistingAbbrlink(
 	content: string,
-	hashLength: number
+	hashLength: number,
+	useDecimal: boolean = false
 ): Promise<string | null> {
-	const match = content.match(
-		new RegExp(`abbrlink:\\s*([a-fA-F0-9]{${hashLength}})`)
-	)
+	const pattern = useDecimal 
+		? `abbrlink:\\s*(\\d{1,${hashLength}})`
+		: `abbrlink:\\s*([a-fA-F0-9]{${hashLength}})`
+	const match = content.match(new RegExp(pattern))
 	return match ? match[1] : null
 }

@@ -15,7 +15,8 @@ const DEFAULT_SETTINGS: AbbrLinkSettings = {
 	useRandomMode: false,
 	checkCollision: false,
 	maxCollisionChecks: 3,
-	overrideDifferentLength: false
+	overrideDifferentLength: false,
+	useDecimal: false
 }
 
 export default class AbbrLinkPlugin extends Plugin {
@@ -140,7 +141,7 @@ export default class AbbrLinkPlugin extends Plugin {
 			}
 		}
 
-		new Notice('Abbrlink 冲突已解决！')
+		new Notice('已解决 Abbrlink 冲突！')
 	}
 
 	private async processFiles(): Promise<void> {
@@ -250,7 +251,7 @@ class SampleSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('跳过已有链接')
-			.setDesc('如果文件已经包含 Abbrlink，则跳过')
+			.setDesc('如果文件已经包含 Abbrlink，则跳过为该文件生成 Abbrlink')
 			.addToggle((toggle) =>
 				toggle
 					.setValue(this.plugin.settings.skipExisting)
@@ -276,7 +277,7 @@ class SampleSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('随机模式')
-			.setDesc('使用随机生成的 SHA256 作为 Abbrlink')
+			.setDesc('使用随机数作为 Abbrlink')
 			.addToggle((toggle) =>
 				toggle
 					.setValue(this.plugin.settings.useRandomMode)
@@ -320,6 +321,18 @@ class SampleSettingTab extends PluginSettingTab {
 					.setValue(this.plugin.settings.overrideDifferentLength)
 					.onChange(async (value) => {
 						this.plugin.settings.overrideDifferentLength = value
+						await this.plugin.saveSettings()
+					})
+			)
+
+		new Setting(containerEl)
+			.setName('使用十进制')
+			.setDesc('使用十进制表示 Abbrlink')
+			.addToggle((toggle) =>
+				toggle
+					.setValue(this.plugin.settings.useDecimal)
+					.onChange(async (value) => {
+						this.plugin.settings.useDecimal = value
 						await this.plugin.saveSettings()
 					})
 			)

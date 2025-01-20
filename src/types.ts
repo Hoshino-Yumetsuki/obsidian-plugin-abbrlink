@@ -6,4 +6,5 @@ export interface AbbrLinkSettings {
 	checkCollision: boolean
 	maxCollisionChecks: number
 	overrideDifferentLength: boolean
+	useDecimal: boolean
 }
