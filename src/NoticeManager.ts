@@ -12,15 +12,6 @@ export const ProcessStep = {
 export type ProcessStepType = (typeof ProcessStep)[keyof typeof ProcessStep]
 
 export class NoticeManager {
-	private static readonly TOTAL_STEPS = 2
-
-	private static formatStepMessage(
-		step: ProcessStepType,
-		message: string
-	): string {
-		return `${message}`
-	}
-
 	static showProcessingStatus(
 		newLinksCount: number,
 		updateLinksCount: number,
@@ -37,7 +28,7 @@ export class NoticeManager {
 	}
 
 	static showCollisionStatus(
-		checkCount: number,
+		_checkCount: number,
 		conflictsCount: number
 	): void {
 		if (conflictsCount > 0) {
