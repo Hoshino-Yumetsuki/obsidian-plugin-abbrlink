@@ -12,7 +12,7 @@ const config = {
 export default defineConfig([
   {
     ...config,
-    output: [{ file: 'lib/main.js', format: 'cjs', minify: true }],
+    output: [{ file: 'dist/main.js', format: 'cjs', minify: true }],
     external: external
   }
 ])
