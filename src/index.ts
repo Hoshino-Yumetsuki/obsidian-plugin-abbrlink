@@ -139,7 +139,7 @@ export default class AbbrLinkPlugin extends Plugin {
       }
     }
 
-    new Notice('已解决 Abbrlink 冲突！')
+    new Notice('已解决 Abbrlink 冲突')
   }
 
   private async processFiles(): Promise<void> {
@@ -161,7 +161,7 @@ export default class AbbrLinkPlugin extends Plugin {
       await this.processFilesWithoutCollisionCheck(tasksToProcess)
     }
 
-    new Notice('完成！')
+    new Notice('完成')
   }
 
   async onload() {
