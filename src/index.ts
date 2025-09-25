@@ -1,7 +1,7 @@
 import { App, Notice, Plugin, PluginSettingTab, Setting, TFile } from 'obsidian'
-import { NoticeManager } from './NoticeManager'
-import { TaskManager, FileTask } from './TaskManager'
-import { AbbrLinkSettings } from './types'
+import { NoticeManager } from './utils/NoticeManager'
+import { TaskManager, FileTask } from './utils/TaskManager'
+import { AbbrLinkSettings } from './utils/types'
 import {
 	generateRandomHash,
 	generateUniqueHash,

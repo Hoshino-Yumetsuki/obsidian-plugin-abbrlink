@@ -1,47 +1,35 @@
 {
-	"name": "obsidian-plugin-abbrlink",
-	"version": "1.2.0",
-	"description": "An Obsidian plugin to generate permanent links for markdown files",
-	"main": "dist/main.js",
-	"scripts": {
-		"dev": "node esbuild.config.mjs",
-		"build": "node esbuild.config.mjs production",
-		"version": "node version-bump.mjs",
-		"lint": "eslint src",
-		"lint-fix": "eslint src --fix"
-	},
-	"keywords": [
-		"obsidian",
-		"obsidian-plugin",
-		"markdown",
-		"permalink",
-		"abbrlink"
-	],
-	"repository": {
-		"type": "git",
-		"url": "https://github.com/Hoshino-Yumetsuki/obsidian-plugin-abbrlink"
-	},
-	"license": "MIT",
-	"devDependencies": {
-		"@codemirror/state": "^6.4.1",
-		"@codemirror/view": "^6.34.3",
-		"@eslint/js": "^9.15.0",
-		"@types/node": "^16.11.6",
-		"@typescript-eslint/eslint-plugin": "^8.15.0",
-		"@typescript-eslint/parser": "5.29.0",
-		"builtin-modules": "3.3.0",
-		"esbuild": "0.17.3",
-		"eslint": "^9.15.0",
-		"eslint-config-prettier": "^9.1.0",
-		"eslint-config-standard": "^17.1.0",
-		"eslint-plugin-import": "^2.30.0",
-		"eslint-plugin-n": "^16.6.2",
-		"eslint-plugin-prettier": "^5.2.1",
-		"eslint-plugin-promise": "^7.1.0",
-		"obsidian": "latest",
-		"prettier": "^3.3.3",
-		"tslib": "2.4.0",
-		"typescript": "4.7.4"
-	},
-	"packageManager": "yarn@4.5.1+sha512.341db9396b6e289fecc30cd7ab3af65060e05ebff4b3b47547b278b9e67b08f485ecd8c79006b405446262142c7a38154445ef7f17c1d5d1de7d90bf9ce7054d"
+  "name": "obsidian-plugin-abbrlink",
+  "version": "1.2.0",
+  "description": "An Obsidian plugin to generate permanent links for markdown files",
+  "main": "dist/main.js",
+  "type": "module",
+  "scripts": {
+    "build": "rolldown -c rolldown.config.js",
+    "lint": "biome check && biome lint ",
+    "lint-fix": "biome format --write && biome lint --write",
+    "bump": "node version-bump.mjs"
+  },
+  "files": [
+    "dist"
+  ],
+  "keywords": [
+    "obsidian",
+    "obsidian-plugin",
+    "markdown",
+    "permalink",
+    "abbrlink"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Hoshino-Yumetsuki/obsidian-plugin-abbrlink"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@biomejs/biome": "^2.2.4",
+    "@types/node": "^24.5.2",
+    "obsidian": "^1.8.7",
+    "rolldown": "1.0.0-beta.40",
+    "typescript": "^5.9.2"
+  }
 }

@@ -26,11 +26,11 @@ jobs:
       - name: Setup Environment
         run: |
           corepack enable
-          yarn set version stable
+          corepack install yarn -g
+          yarn install
 
       - name: Build
         run: |
-          yarn
           yarn lint
           yarn build
           mv dist/main.js main.js

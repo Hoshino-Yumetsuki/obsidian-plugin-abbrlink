@@ -27,12 +27,12 @@ jobs:
       - name: Setup Environment
         run: |
           corepack enable
-          yarn set version stable
+          corepack install yarn -g
+          yarn install --immutable
 
       - name: Build
         id: build
         run: |
-          yarn
           yarn build
           mkdir ${{ env.PLUGIN_NAME }}
           mv dist/main.js main.js

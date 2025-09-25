@@ -1,5 +1,5 @@
 import { TFile } from 'obsidian'
-import { AbbrLinkSettings } from '../types'
+import { AbbrLinkSettings } from './types'
 
 function hexToDecimal(hex: string, maxLength: number): string {
 	const decimal = BigInt(`0x${hex}`).toString()
