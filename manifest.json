@@ -1,11 +1,11 @@
 {
-	"id": "abbrlink",
-	"name": "Abbrlink",
-	"version": "1.2.1",
-	"minAppVersion": "1.1.0",
-	"description": "Automatically generate permanent short links for your markdown files.",
-	"author": "Q78KG",
-	"authorUrl": "https://github.com/Hoshino-Yumetsuki",
-	"fundingUrl": "",
-	"isDesktopOnly": false
+  "id": "abbrlink",
+  "name": "Abbrlink",
+  "version": "1.2.1",
+  "minAppVersion": "1.1.0",
+  "description": "Automatically generate permanent short links for your markdown files.",
+  "author": "Q78KG",
+  "authorUrl": "https://github.com/Hoshino-Yumetsuki",
+  "fundingUrl": "",
+  "isDesktopOnly": false
 }
