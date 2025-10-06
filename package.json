@@ -26,10 +26,10 @@
   },
   "license": "MIT",
   "devDependencies": {
-    "@biomejs/biome": "^2.2.4",
-    "@types/node": "^24.5.2",
-    "obsidian": "^1.8.7",
-    "rolldown": "1.0.0-beta.40",
-    "typescript": "^5.9.2"
+    "@biomejs/biome": "^2.2.5",
+    "@types/node": "^24.6.2",
+    "obsidian": "^1.10.0",
+    "rolldown": "1.0.0-beta.41",
+    "typescript": "^5.9.3"
   }
 }
